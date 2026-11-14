@@ -1,0 +1,269 @@
+[
+  {
+    "id": "sql-s5-predict-001",
+    "lang": "sql",
+    "unit": "S5",
+    "level": 1,
+    "type": "predict",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "case when"
+    ],
+    "code": "SELECT CASE WHEN 7 > 5 THEN 'high' ELSE 'low' END;",
+    "code_spoken": "Select case when 7 is greater than 5 then the string high, else the string low, end.",
+    "prompt_spoken": "What does this query return?",
+    "expected": "high",
+    "accept": [],
+    "hints_spoken": [
+      "Is 7 greater than 5?"
+    ],
+    "model_answer_spoken": "It returns high, because 7 is greater than 5."
+  },
+  {
+    "id": "sql-s5-predict-002",
+    "lang": "sql",
+    "unit": "S5",
+    "level": 1,
+    "type": "predict",
+    "difficulty": 2,
+    "drive_ok": true,
+    "topics": [
+      "case when",
+      "null"
+    ],
+    "code": "SELECT CASE WHEN NULL THEN 'yes' ELSE 'no' END;",
+    "code_spoken": "Select case when null then the string yes, else the string no, end.",
+    "prompt_spoken": "What does this query return?",
+    "expected": "no",
+    "accept": [],
+    "hints_spoken": [
+      "A null condition is not true."
+    ],
+    "model_answer_spoken": "It returns no. A null condition isn't true, so the else branch runs."
+  },
+  {
+    "id": "sql-s5-predict-003",
+    "lang": "sql",
+    "unit": "S5",
+    "level": 1,
+    "type": "predict",
+    "difficulty": 3,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "subquery",
+      "avg"
+    ],
+    "code": "SELECT COUNT(*) FROM lots\nWHERE lot_id <= 5\n  AND qty > (SELECT AVG(qty) FROM lots WHERE lot_id <= 5);",
+    "code_spoken": "Select the count of rows from lots where lot id is at most 5, and qty is greater than a subquery, the average qty of lots where lot id is at most 5.",
+    "prompt_spoken": "Lots 1 to 5 have quantities 120, 340, 90, 200 and 120. What does this query return?",
+    "expected": "2",
+    "accept": [],
+    "hints_spoken": [
+      "The average of the five is 174."
+    ],
+    "model_answer_spoken": "It returns 2. The average is 174, and only 340 and 200 are above it."
+  },
+  {
+    "id": "sql-s5-predict-004",
+    "lang": "sql",
+    "unit": "S5",
+    "level": 1,
+    "type": "predict",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "with",
+      "cte"
+    ],
+    "code": "WITH big AS (\n  SELECT lot_id FROM lots WHERE lot_id <= 5 AND qty >= 150\n)\nSELECT COUNT(*) FROM big;",
+    "code_spoken": "With big as, select lot id from lots where lot id is at most 5 and qty is at least 150. Then select the count of rows from big.",
+    "prompt_spoken": "Lots 1 to 5 have quantities 120, 340, 90, 200 and 120. What does this query return?",
+    "expected": "2",
+    "accept": [],
+    "hints_spoken": [
+      "Which of the five are at least 150?"
+    ],
+    "model_answer_spoken": "It returns 2, the lots with 340 and 200."
+  },
+  {
+    "id": "sql-s5-explain-001",
+    "lang": "sql",
+    "unit": "S5",
+    "level": 1,
+    "type": "explain",
+    "difficulty": 1,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "case when"
+    ],
+    "code": "SELECT lot_id, qty,\n  CASE WHEN qty >= 300 THEN 'large'\n       WHEN qty >= 150 THEN 'medium'\n       ELSE 'small' END AS size\nFROM lots;",
+    "code_spoken": "Select lot id, qty, and case when qty is at least 300 then large, when qty is at least 150 then medium, else small, end, as size, from lots.",
+    "prompt_spoken": "What does this query do?",
+    "rubric": [
+      "labels every lot by quantity",
+      "300 or more is large",
+      "150 to 299 is medium",
+      "anything lower is small"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "It labels every lot as large, medium or small by quantity. 300 or more is large, 150 or more is medium, and the rest are small."
+  },
+  {
+    "id": "sql-s5-explain-002",
+    "lang": "sql",
+    "unit": "S5",
+    "level": 1,
+    "type": "explain",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "subquery",
+      "in"
+    ],
+    "code": "SELECT part_name FROM parts\nWHERE part_id IN (SELECT part_id FROM lots WHERE qty > 450);",
+    "code_spoken": "Select part name from parts where part id is in a subquery, select part id from lots where qty is greater than 450.",
+    "prompt_spoken": "What does this query do?",
+    "rubric": [
+      "the subquery finds parts that had a lot over 450",
+      "the outer query lists those parts' names",
+      "each part appears once"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "It lists the parts that have at least one lot with more than 450 units."
+  },
+  {
+    "id": "sql-s5-explain-003",
+    "lang": "sql",
+    "unit": "S5",
+    "level": 1,
+    "type": "explain",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "shop",
+    "topics": [
+      "with",
+      "group by"
+    ],
+    "code": "WITH totals AS (\n  SELECT customer_id, COUNT(*) AS n FROM orders GROUP BY customer_id\n)\nSELECT customer_id FROM totals WHERE n >= 6;",
+    "code_spoken": "With totals as, select customer id and the count of orders as n, grouped by customer id. Then select customer id from totals where n is at least 6.",
+    "prompt_spoken": "What does this query do?",
+    "rubric": [
+      "the with clause counts orders per customer",
+      "the main query keeps customers with 6 or more orders",
+      "returns their customer ids"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "It counts orders for each customer, then lists the customers with six or more orders."
+  },
+  {
+    "id": "sql-s5-bug-001",
+    "lang": "sql",
+    "unit": "S5",
+    "level": 1,
+    "type": "spot_bug",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "subquery",
+      "in"
+    ],
+    "code": "SELECT part_name\nFROM parts\nWHERE part_id = (SELECT part_id FROM lots WHERE qty > 400);",
+    "code_spoken": "Line 1, select part name. Line 2, from parts. Line 3, where part id equals a subquery, select part id from lots where qty is greater than 400.",
+    "prompt_spoken": "This should list every part with a lot over 400. Which line has the bug, and what's the fix?",
+    "rubric": [
+      "names line 3",
+      "the subquery returns many rows but equals compares with just one",
+      "use in"
+    ],
+    "bug": {
+      "line": 3,
+      "fix_spoken": "On line 3, use in instead of equals. The subquery returns many part ids.",
+      "fixed_code": "SELECT part_name\nFROM parts\nWHERE part_id IN (SELECT part_id FROM lots WHERE qty > 400);"
+    },
+    "hints_spoken": [
+      "How many rows does the subquery return?"
+    ],
+    "model_answer_spoken": "Line 3. The subquery returns many part ids, but equals only uses one. Use in."
+  },
+  {
+    "id": "sql-s5-bug-002",
+    "lang": "sql",
+    "unit": "S5",
+    "level": 1,
+    "type": "spot_bug",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "case when",
+      "branch order"
+    ],
+    "code": "SELECT lot_id,\n  CASE WHEN qty > 100 THEN 'ok' WHEN qty > 300 THEN 'large' END AS label\nFROM lots;",
+    "code_spoken": "Line 1, select lot id. Line 2, case when qty is greater than 100 then ok, when qty is greater than 300 then large, end, as label. Line 3, from lots.",
+    "prompt_spoken": "Lots over 300 should be labeled large, and other lots over 100 should be labeled ok. Which line has the bug, and what's the fix?",
+    "rubric": [
+      "names line 2",
+      "case stops at the first true branch",
+      "big lots match over 100 first, so large never appears",
+      "put the over 300 branch first"
+    ],
+    "bug": {
+      "line": 2,
+      "fix_spoken": "On line 2, check greater than 300 first. Case stops at the first true branch.",
+      "fixed_code": "SELECT lot_id,\n  CASE WHEN qty > 300 THEN 'large' WHEN qty > 100 THEN 'ok' END AS label\nFROM lots;"
+    },
+    "hints_spoken": [
+      "A lot of 400 is also greater than 100."
+    ],
+    "model_answer_spoken": "Line 2. Case stops at the first true branch, so large lots get ok. Check over 300 first."
+  },
+  {
+    "id": "sql-s5-concept-001",
+    "lang": "sql",
+    "unit": "S5",
+    "level": 1,
+    "type": "concept",
+    "difficulty": 2,
+    "drive_ok": true,
+    "topics": [
+      "with",
+      "subqueries"
+    ],
+    "prompt_spoken": "When would you use a with clause, a common table expression, instead of a subquery?",
+    "rubric": [
+      "it names an intermediate result",
+      "the query reads top to bottom",
+      "it helps when the result is used more than once"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Use a with clause to name an intermediate result so the query reads top to bottom, or when you need the same result more than once. A subquery is fine for a small one-off filter."
+  },
+  {
+    "id": "sql-s5-plan-001",
+    "lang": "sql",
+    "unit": "S5",
+    "level": 1,
+    "type": "plan",
+    "difficulty": 3,
+    "drive_ok": true,
+    "topics": [
+      "case when",
+      "exists"
+    ],
+    "prompt_spoken": "Plan this out loud. For each customer, show their name and whether they've ever had a cancelled order, as yes or no.",
+    "rubric": [
+      "select name from customers",
+      "case when exists a cancelled order for that customer",
+      "then yes, else no",
+      "or left join the cancelled orders and check for null"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Select name from customers, plus a case when exists a cancelled order for that customer, then yes, else no. Or left join to cancelled orders and check for null."
+  }
+]

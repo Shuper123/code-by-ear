@@ -1,0 +1,295 @@
+[
+  {
+    "id": "sql-s1-predict-001",
+    "lang": "sql",
+    "unit": "S1",
+    "level": 1,
+    "type": "predict",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "expressions",
+      "operator precedence"
+    ],
+    "code": "SELECT 2 + 3 * 4;",
+    "code_spoken": "Select 2 plus 3 times 4.",
+    "prompt_spoken": "What does this query return?",
+    "expected": "14",
+    "accept": [],
+    "hints_spoken": [
+      "Multiplication happens before addition."
+    ],
+    "model_answer_spoken": "It returns 14. Multiplication happens first, so 3 times 4 is 12, plus 2."
+  },
+  {
+    "id": "sql-s1-predict-002",
+    "lang": "sql",
+    "unit": "S1",
+    "level": 1,
+    "type": "predict",
+    "difficulty": 2,
+    "drive_ok": true,
+    "topics": [
+      "integer division"
+    ],
+    "code": "SELECT 7 / 2;",
+    "code_spoken": "Select 7 divided by 2.",
+    "prompt_spoken": "In SQLite, what does this query return?",
+    "expected": "3",
+    "accept": [],
+    "hints_spoken": [
+      "Both numbers are integers."
+    ],
+    "model_answer_spoken": "It returns 3. Both numbers are integers, so SQLite does integer division and drops the half."
+  },
+  {
+    "id": "sql-s1-predict-003",
+    "lang": "sql",
+    "unit": "S1",
+    "level": 1,
+    "type": "predict",
+    "difficulty": 1,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "limit"
+    ],
+    "code": "SELECT part_name FROM parts LIMIT 5;",
+    "code_spoken": "Select part name from parts, limit 5.",
+    "prompt_spoken": "The parts table has 12 rows. How many rows does this return?",
+    "expected": "5",
+    "answer_kind": "row_count",
+    "accept": [],
+    "hints_spoken": [
+      "Limit caps the number of rows."
+    ],
+    "model_answer_spoken": "It returns 5 rows. Limit 5 stops after five."
+  },
+  {
+    "id": "sql-s1-predict-004",
+    "lang": "sql",
+    "unit": "S1",
+    "level": 1,
+    "type": "predict",
+    "difficulty": 1,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "limit"
+    ],
+    "code": "SELECT part_name FROM parts LIMIT 20;",
+    "code_spoken": "Select part name from parts, limit 20.",
+    "prompt_spoken": "The parts table has 12 rows. How many rows does this return?",
+    "expected": "12",
+    "answer_kind": "row_count",
+    "accept": [],
+    "hints_spoken": [
+      "Limit is a maximum, not a target."
+    ],
+    "model_answer_spoken": "It returns 12. Limit is only a maximum, and there are just 12 parts."
+  },
+  {
+    "id": "sql-s1-predict-005",
+    "lang": "sql",
+    "unit": "S1",
+    "level": 1,
+    "type": "predict",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "order by",
+      "limit"
+    ],
+    "code": "SELECT lot_id FROM lots\nWHERE lot_id <= 5\nORDER BY qty DESC\nLIMIT 1;",
+    "code_spoken": "Select lot id from lots where lot id is at most 5, order by qty descending, limit 1.",
+    "prompt_spoken": "Lots 1 to 5 have quantities 120, 340, 90, 200 and 120. What does this query return?",
+    "expected": "2",
+    "accept": [],
+    "hints_spoken": [
+      "Which of the five lots has the biggest quantity?"
+    ],
+    "model_answer_spoken": "It returns lot 2, which has the biggest quantity, 340."
+  },
+  {
+    "id": "sql-s1-predict-006",
+    "lang": "sql",
+    "unit": "S1",
+    "level": 1,
+    "type": "predict",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "order by",
+      "limit"
+    ],
+    "code": "SELECT qty FROM lots\nWHERE lot_id <= 5\nORDER BY qty\nLIMIT 2;",
+    "code_spoken": "Select qty from lots where lot id is at most 5, order by qty, limit 2.",
+    "prompt_spoken": "Lots 1 to 5 have quantities 120, 340, 90, 200 and 120. What does this query return?",
+    "expected": "90\n120",
+    "accept": [
+      "90 and 120"
+    ],
+    "hints_spoken": [
+      "Order by sorts smallest first unless you say descending."
+    ],
+    "model_answer_spoken": "It returns 90, then 120, the two smallest quantities, smallest first."
+  },
+  {
+    "id": "sql-s1-explain-001",
+    "lang": "sql",
+    "unit": "S1",
+    "level": 1,
+    "type": "explain",
+    "difficulty": 1,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "where",
+      "order by"
+    ],
+    "code": "SELECT part_name, unit_cost\nFROM parts\nWHERE line = 'A'\nORDER BY unit_cost DESC;",
+    "code_spoken": "Select part name and unit cost from parts where line is equal to the string A, order by unit cost descending.",
+    "prompt_spoken": "What does this query do?",
+    "rubric": [
+      "only parts on line A",
+      "shows each part's name and unit cost",
+      "most expensive first"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "It lists the parts made on line A with their unit cost, most expensive first."
+  },
+  {
+    "id": "sql-s1-explain-002",
+    "lang": "sql",
+    "unit": "S1",
+    "level": 1,
+    "type": "explain",
+    "difficulty": 1,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "where",
+      "order by",
+      "limit"
+    ],
+    "code": "SELECT *\nFROM lots\nWHERE qty > 300\nORDER BY produced_on\nLIMIT 10;",
+    "code_spoken": "Select all columns from lots where qty is greater than 300, order by produced on, limit 10.",
+    "prompt_spoken": "What does this query do?",
+    "rubric": [
+      "only lots with more than 300 units",
+      "oldest first by production date",
+      "at most 10 rows"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "It returns the first 10 lots, by production date, that had more than 300 units."
+  },
+  {
+    "id": "sql-s1-bug-001",
+    "lang": "sql",
+    "unit": "S1",
+    "level": 1,
+    "type": "spot_bug",
+    "difficulty": 1,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "string literals"
+    ],
+    "code": "SELECT part_name\nFROM parts\nWHERE line = A;",
+    "code_spoken": "Line 1, select part name. Line 2, from parts. Line 3, where line equals A, with no quotes.",
+    "prompt_spoken": "This should list the parts on line A. Which line has the bug, and what's the fix?",
+    "rubric": [
+      "names line 3",
+      "A without quotes is read as a column name",
+      "use the string A in single quotes"
+    ],
+    "bug": {
+      "line": 3,
+      "fix_spoken": "On line 3, put A in single quotes. Without quotes SQL looks for a column named A.",
+      "fixed_code": "SELECT part_name\nFROM parts\nWHERE line = 'A';"
+    },
+    "hints_spoken": [
+      "How does SQL tell a value from a column name?"
+    ],
+    "model_answer_spoken": "Line 3. Without quotes, A is read as a column name. Write A as a string in single quotes."
+  },
+  {
+    "id": "sql-s1-bug-002",
+    "lang": "sql",
+    "unit": "S1",
+    "level": 1,
+    "type": "spot_bug",
+    "difficulty": 1,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "order by",
+      "desc"
+    ],
+    "code": "SELECT lot_id, qty\nFROM lots\nORDER BY qty\nLIMIT 3;",
+    "code_spoken": "Line 1, select lot id and qty. Line 2, from lots. Line 3, order by qty. Line 4, limit 3.",
+    "prompt_spoken": "This should return the three largest lots. Which line has the bug, and what's the fix?",
+    "rubric": [
+      "names line 3",
+      "the default order is ascending, so it returns the smallest",
+      "add descending"
+    ],
+    "bug": {
+      "line": 3,
+      "fix_spoken": "On line 3, order by qty descending. Ascending order puts the smallest first.",
+      "fixed_code": "SELECT lot_id, qty\nFROM lots\nORDER BY qty DESC\nLIMIT 3;"
+    },
+    "order_matters": true,
+    "hints_spoken": [
+      "Which way does order by sort by default?"
+    ],
+    "model_answer_spoken": "Line 3. Order by sorts ascending by default, so this gets the smallest lots. Add descending."
+  },
+  {
+    "id": "sql-s1-concept-001",
+    "lang": "sql",
+    "unit": "S1",
+    "level": 1,
+    "type": "concept",
+    "difficulty": 2,
+    "drive_ok": true,
+    "topics": [
+      "clause order"
+    ],
+    "prompt_spoken": "In what order does SQL actually run the clauses of a basic select query?",
+    "rubric": [
+      "from first",
+      "then where",
+      "then select",
+      "order by and limit last",
+      "so a select alias can't be used in where"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "From first, then where, then select, then order by, then limit. That's why a select alias can't be used in the where clause."
+  },
+  {
+    "id": "sql-s1-plan-001",
+    "lang": "sql",
+    "unit": "S1",
+    "level": 1,
+    "type": "plan",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "where",
+      "order by",
+      "limit"
+    ],
+    "prompt_spoken": "Plan this out loud. Find the five most expensive parts on line B, showing name and cost.",
+    "rubric": [
+      "select part name and unit cost from parts",
+      "filter where line is B",
+      "order by unit cost descending",
+      "limit 5"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Select part name and unit cost from parts, keep rows where line is B, order by unit cost descending, and limit to 5."
+  }
+]

@@ -1,0 +1,228 @@
+// Session screen. Drive: dark, one full-screen Pause target, no code shown. Parked: code,
+// transcript and results shown, with buttons for the common commands.
+import { useEffect, useRef, useState } from 'preact/hooks'
+import { ALL_DRILLS } from '../data/drills'
+import { LEVEL_NAMES, UNIT_NAMES } from '../data/types'
+import { localDate } from '../engine/dates'
+import { idbStore } from '../engine/progress'
+import { SessionEngine, type AiGrader, type EngineDeps, type EngineView } from '../engine/session'
+import { holdWakeLock, releaseWakeLock } from '../platform/wakelock'
+import { getSettings, updateSettings } from '../settings'
+import type { Command } from '../speech/commands'
+import { playCue } from '../speech/cues'
+import { listen } from '../speech/stt'
+import { speak, stopSpeaking } from '../speech/tts'
+import type { Profile } from '../storage/db'
+import { goBack, navigate } from './nav'
+
+export const SUPPORTED_TYPES = new Set(['predict', 'explain', 'spot_bug', 'plan', 'concept'])
+
+/** Hooks for later milestones to plug in AI grading and Level 2 and 3 handlers. */
+export const sessionExtensions: {
+  grader?: () => AiGrader | undefined
+  levelHandlers?: () => EngineDeps['levelHandlers']
+  supportedTypes?: () => Set<string>
+} = {}
+
+const TYPE_LABEL: Record<string, string> = {
+  predict: 'Predict',
+  explain: 'Explain',
+  spot_bug: 'Spot the bug',
+  plan: 'Plan',
+  concept: 'Concept',
+  sketch: 'Sketch',
+  dictate: 'Dictate',
+}
+
+function mmss(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000))
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
+function phaseLabel(v: EngineView): string {
+  if (v.paused) return v.pauseReason === 'break' ? 'Break' : 'Paused'
+  switch (v.phase) {
+    case 'starting':
+      return 'Starting'
+    case 'speaking':
+      return 'Speaking'
+    case 'listening':
+      return 'Listening'
+    case 'grading':
+      return 'Checking'
+    case 'recap':
+      return 'Recap'
+    case 'ended':
+      return 'Done'
+    default:
+      return ''
+  }
+}
+
+export function SessionScreen({ profile }: { profile: Profile }) {
+  const [view, setView] = useState<EngineView | null>(null)
+  const [now, setNow] = useState(Date.now())
+  const engineRef = useRef<SessionEngine | null>(null)
+  const startRef = useRef(Date.now())
+
+  useEffect(() => {
+    const s = getSettings()
+    const deps: EngineDeps = {
+      speak: (text, rate, signal) => speak(text, { rate, voiceURI: s.voiceURI }, signal),
+      stopSpeaking,
+      listen,
+      cue: (name) => playCue(name, s.cueVolume),
+      now: () => Date.now(),
+      today: () => localDate(),
+      store: idbStore,
+      grader: sessionExtensions.grader?.(),
+      levelHandlers: sessionExtensions.levelHandlers?.(),
+      onRateChange: (p, rate) => void updateSettings(p === 'drive' ? { rateDrive: rate } : { rateParked: rate }),
+      supportedTypes: sessionExtensions.supportedTypes?.() ?? SUPPORTED_TYPES,
+    }
+    const engine = new SessionEngine({ profile, settings: s, drills: ALL_DRILLS }, deps)
+    engineRef.current = engine
+    startRef.current = Date.now()
+    const unsub = engine.subscribe(setView)
+    void holdWakeLock()
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') engine.requestPause('hidden')
+      else engine.onVisible()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    const tick = setInterval(() => setNow(Date.now()), 1000)
+    void engine.run().finally(() => void releaseWakeLock())
+    return () => {
+      clearInterval(tick)
+      document.removeEventListener('visibilitychange', onVis)
+      unsub()
+      engine.quit()
+      stopSpeaking()
+      void releaseWakeLock()
+    }
+  }, [profile])
+
+  const engine = engineRef.current
+  if (!view || !engine) return <div class="drive">Starting…</div>
+  const elapsed = now - startRef.current
+  const cmd = (c: Command) => engine.injectCommand(c)
+
+  if (view.phase === 'ended' || view.phase === 'recap') {
+    return (
+      <div class="page">
+        <div class="topbar">
+          <h1>{view.phase === 'recap' ? 'Recap' : 'Session done'}</h1>
+        </div>
+        <div class="card">
+          <p style={{ fontSize: '1.1rem' }}>{view.recap}</p>
+          <p class="muted small">
+            {view.scored} scored · {view.done} drill{view.done === 1 ? '' : 's'} · {mmss(elapsed)}
+          </p>
+        </div>
+        <div class="grid2">
+          <button class="btn primary big" onClick={goBack}>
+            Home
+          </button>
+          <button class="btn big" onClick={() => navigate('progress')}>
+            Progress
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (profile === 'drive') {
+    const dot = view.paused ? '' : view.phase === 'listening' ? 'listening' : view.phase === 'speaking' ? 'speaking' : ''
+    const hint = view.paused
+      ? 'Tap anywhere, or say continue'
+      : view.phase === 'listening'
+        ? 'Answer out loud'
+        : 'Tap anywhere to pause'
+    return (
+      <>
+        <button
+          class={`drive ${view.paused ? 'paused' : ''}`}
+          onClick={() => engine.togglePause()}
+          aria-label={view.paused ? 'Resume session' : 'Pause session'}
+        >
+          <div class={`dot ${dot}`} />
+          <div class="state">{phaseLabel(view)}</div>
+          <div class="hint">{hint}</div>
+          <div class="meta">
+            {view.done} drill{view.done === 1 ? '' : 's'} · {mmss(elapsed)}
+          </div>
+        </button>
+        {view.paused && (
+          <div style={{ position: 'fixed', top: 'calc(env(safe-area-inset-top) + 16px)', right: '16px', zIndex: 10 }}>
+            <button class="btn danger" onClick={() => engine.requestStop()}>
+              End session
+            </button>
+          </div>
+        )}
+      </>
+    )
+  }
+
+  // Parked
+  const d = view.drill
+  return (
+    <div class="page">
+      <div class="topbar">
+        <h1>Parked · {mmss(elapsed)}</h1>
+        <button class="btn" onClick={() => engine.togglePause()}>
+          {view.paused ? 'Resume' : 'Pause'}
+        </button>
+        <button class="btn danger" onClick={() => engine.requestStop()}>
+          End
+        </button>
+      </div>
+      <div class="row" style={{ marginBottom: '10px' }}>
+        <span class={`pill ${view.paused ? 'warn' : view.phase === 'listening' ? 'ok' : ''}`}>{phaseLabel(view)}</span>
+        <span class="pill">
+          {view.done} done · avg {view.scored ? (view.scoreSum / view.scored).toFixed(1) : '–'}
+        </span>
+        {view.lastScore !== null && <span class={`pill score-${view.lastScore}`}>last: {view.lastScore}/3</span>}
+      </div>
+      {d && (
+        <div class="card">
+          <div class="step">
+            {d.lang === 'sql' ? 'SQL' : 'Python'} · {UNIT_NAMES[d.unit]} · {TYPE_LABEL[d.type]} · Level {d.level}{' '}
+            {LEVEL_NAMES[d.level]}
+          </div>
+          {d.code && (
+            <div class="code" style={{ marginTop: '8px' }}>
+              {d.code}
+            </div>
+          )}
+          <p style={{ fontSize: '1.05rem' }}>{d.prompt_spoken}</p>
+        </div>
+      )}
+      <div class="card">
+        <div class="step">You</div>
+        <div class="transcript">{view.phase === 'listening' ? view.heard || '…' : view.lastAnswer || view.heard || '…'}</div>
+        <div class="row" style={{ marginTop: '10px' }}>
+          <button class="btn teal" disabled={view.phase !== 'listening'} onClick={() => engine.finishAnswer()}>
+            Done talking
+          </button>
+          <button class="btn" disabled={view.phase !== 'listening'} onClick={() => cmd('repeat')}>
+            Repeat
+          </button>
+          <button class="btn" disabled={view.phase !== 'listening'} onClick={() => cmd('hint')}>
+            Hint
+          </button>
+          <button class="btn" disabled={view.phase !== 'listening'} onClick={() => cmd('skip')}>
+            Skip
+          </button>
+          <button class="btn" disabled={view.phase !== 'listening'} onClick={() => cmd('idk')}>
+            I don't know
+          </button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="step">App</div>
+        <p>{view.said}</p>
+        {view.error && <p class="small" style={{ color: 'var(--red)' }}>{view.error}</p>}
+      </div>
+    </div>
+  )
+}

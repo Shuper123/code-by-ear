@@ -1,0 +1,96 @@
+{
+  "factory": [
+    {
+      "table": "parts",
+      "columns": [
+        "part_id",
+        "part_name",
+        "line",
+        "unit_cost"
+      ],
+      "spoken": "The parts table has part id, part name, line, and unit cost."
+    },
+    {
+      "table": "machines",
+      "columns": [
+        "machine_id",
+        "line",
+        "installed_on"
+      ],
+      "spoken": "The machines table has machine id, line, and installed on."
+    },
+    {
+      "table": "lots",
+      "columns": [
+        "lot_id",
+        "part_id",
+        "machine_id",
+        "produced_on",
+        "qty",
+        "shift"
+      ],
+      "spoken": "The lots table has lot id, part id, machine id, produced on, quantity, and shift."
+    },
+    {
+      "table": "defects",
+      "columns": [
+        "defect_id",
+        "lot_id",
+        "defect_code",
+        "qty",
+        "found_on"
+      ],
+      "spoken": "The defects table has defect id, lot id, defect code, quantity, and found on."
+    },
+    {
+      "table": "defect_codes",
+      "columns": [
+        "defect_code",
+        "description",
+        "category"
+      ],
+      "spoken": "The defect codes table has defect code, description, and category."
+    }
+  ],
+  "shop": [
+    {
+      "table": "customers",
+      "columns": [
+        "customer_id",
+        "name",
+        "city",
+        "signup_date"
+      ],
+      "spoken": "The customers table has customer id, name, city, and signup date."
+    },
+    {
+      "table": "products",
+      "columns": [
+        "product_id",
+        "name",
+        "category",
+        "price"
+      ],
+      "spoken": "The products table has product id, name, category, and price."
+    },
+    {
+      "table": "orders",
+      "columns": [
+        "order_id",
+        "customer_id",
+        "order_date",
+        "status"
+      ],
+      "spoken": "The orders table has order id, customer id, order date, and status."
+    },
+    {
+      "table": "order_items",
+      "columns": [
+        "order_id",
+        "product_id",
+        "quantity"
+      ],
+      "spoken": "The order items table has order id, product id, and quantity."
+    }
+  ]
+}

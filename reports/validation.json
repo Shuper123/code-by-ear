@@ -1,0 +1,18 @@
+{
+  "drills": 144,
+  "level1": {
+    "python": 73,
+    "sql": 71
+  },
+  "ladders": {},
+  "errors": {},
+  "warnings": {
+    "(python)": [
+      "only 0 ladders (milestone 2 needs 12)"
+    ],
+    "(sql)": [
+      "only 0 ladders (milestone 2 needs 12)"
+    ]
+  },
+  "reference_hashes": {}
+}

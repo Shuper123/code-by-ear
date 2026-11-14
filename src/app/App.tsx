@@ -4,6 +4,8 @@ import { kvGet, kvSet } from '../storage/db'
 import { Home } from './Home'
 import { initNav, useRoute } from './nav'
 import { Notice } from './Notice'
+import { ProgressScreen } from './ProgressScreen'
+import { SessionScreen } from './SessionScreen'
 import { SettingsScreen } from './SettingsScreen'
 import { Spike } from './Spike'
 
@@ -36,6 +38,12 @@ export function App() {
       break
     case 'settings':
       screen = <SettingsScreen />
+      break
+    case 'session':
+      screen = noticeAccepted ? <SessionScreen profile={route.params?.profile === 'drive' ? 'drive' : 'parked'} /> : <Home />
+      break
+    case 'progress':
+      screen = <ProgressScreen />
       break
     default:
       screen = <Home />

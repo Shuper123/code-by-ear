@@ -9,9 +9,11 @@
     "build": "node scripts/copy_runtimes.mjs && tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "validate": "python3 scripts/validate_drills.py",
+    "validate": "python3 scripts/build_drills.py && python3 scripts/validate_drills.py",
     "check": "npm run validate && npm test",
-    "deploy": "bash scripts/deploy_pages.sh"
+    "deploy": "bash scripts/deploy_pages.sh",
+    "smoke": "python3 scripts/browser_smoke.py",
+    "datasets": "python3 scripts/generate_datasets.py"
   },
   "dependencies": {
     "idb": "8.0.4",

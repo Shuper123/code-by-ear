@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'preact/hooks'
+import { ALL_DRILLS } from '../data/drills'
+import { UNIT_NAMES } from '../data/types'
+import { localDate } from '../engine/dates'
+import { dueCount, idbStore } from '../engine/progress'
+import { languagesFor } from '../engine/queue'
+import { newDrillUnit } from '../engine/unlock'
 import { isStandalone, pwa } from '../pwa'
 import { useSettings } from '../settings'
+import { unlockAudio } from '../speech/cues'
+import { ttsSupported } from '../speech/tts'
+import type { Profile } from '../storage/db'
 import { buildLabel } from '../version'
 import { navigate } from './nav'
 
@@ -18,9 +27,43 @@ function UpdateBanner() {
   )
 }
 
+/** Start buttons run inside a tap, which lets the page play audio and speech afterwards. */
+function startSession(profile: Profile) {
+  unlockAudio()
+  if (ttsSupported()) {
+    const u = new SpeechSynthesisUtterance(' ')
+    u.volume = 0
+    window.speechSynthesis.speak(u)
+  }
+  navigate('session', { profile })
+}
+
+interface Today {
+  due: number
+  seen: number
+  next: string[]
+}
+
 export function Home() {
-  const { hasKey } = useSettings()
+  const { settings, hasKey } = useSettings()
+  const [today, setToday] = useState<Today | null>(null)
   const standalone = isStandalone()
+
+  useEffect(() => {
+    void (async () => {
+      const states = await idbStore.loadStates()
+      const langs = languagesFor(settings.languageMix)
+      const drills = ALL_DRILLS.filter((d) => langs.includes(d.lang))
+      const seen = new Set([...states.values()].filter((s) => s.reps > 0).map((s) => s.id))
+      const next = langs
+        .map((l) => newDrillUnit(ALL_DRILLS, l, seen))
+        .filter((u): u is string => !!u)
+        .map((u) => `${u} ${UNIT_NAMES[u]}`)
+      setToday({ due: dueCount(states, drills, localDate()), seen: [...seen].filter((id) => drills.some((d) => d.id === id)).length, next })
+    })()
+  }, [settings.languageMix])
+
+  const mix = settings.languageMix === 'both' ? 'SQL and Python' : settings.languageMix === 'sql' ? 'SQL only' : 'Python only'
   return (
     <div class="page">
       <UpdateBanner />
@@ -33,40 +76,49 @@ export function Home() {
       </div>
 
       <div class="card">
-        <h2>Milestone 0: voice spike</h2>
-        <p class="muted small">
-          Tests the risky parts on your phone before the real sessions are built: speech out, speech in across
-          pauses, tones, keeping the screen on, and one AI call.
-        </p>
-        <button class="btn primary block big" onClick={() => navigate('spike')}>
-          Open voice spike
-        </button>
-      </div>
-
-      <div class="grid2">
-        <button class="btn block big" disabled>
-          Start Drive
-        </button>
-        <button class="btn block big" disabled>
-          Start Parked
-        </button>
-      </div>
-      <p class="faint">Drive and Parked sessions arrive in milestone 1.</p>
-
-      <div class="card">
-        <div class="row">
-          <span class={`pill ${hasKey ? 'ok' : 'warn'}`}>{hasKey ? 'API key saved' : 'No API key'}</span>
-          <span class={`pill ${standalone ? 'ok' : 'warn'}`}>{standalone ? 'Installed app' : 'Running in browser'}</span>
-        </div>
-        {!standalone && (
-          <p class="faint">To install: Chrome menu, then Add to Home screen or Install app.</p>
+        <h2>Today</h2>
+        {today ? (
+          <>
+            <p>
+              <strong>{today.due}</strong> review{today.due === 1 ? '' : 's'} due · {today.seen} drills seen so far
+            </p>
+            <p class="muted small">
+              {mix}. New drills from {today.next.length ? today.next.join(' and ') : 'any unit (all units mostly seen)'}.
+            </p>
+          </>
+        ) : (
+          <p class="muted">Loading…</p>
         )}
-        <div class="row" style={{ marginTop: '10px' }}>
-          <button class="btn" onClick={() => navigate('settings')}>
-            Settings
-          </button>
-        </div>
       </div>
+
+      <button class="btn primary block big" onClick={() => startSession('drive')}>
+        Start Drive
+      </button>
+      <p class="faint" style={{ margin: '6px 4px 14px' }}>
+        {settings.sessionMinutes} minutes, voice only. Press before you pull out.
+      </p>
+      <button class="btn teal block big" onClick={() => startSession('parked')}>
+        Start Parked
+      </button>
+      <p class="faint" style={{ margin: '6px 4px 14px' }}>Code and transcript on screen. Ends when you say stop session.</p>
+
+      <div class="row" style={{ marginBottom: '14px' }}>
+        <button class="btn" onClick={() => navigate('progress')}>
+          Progress
+        </button>
+        <button class="btn" onClick={() => navigate('settings')}>
+          Settings
+        </button>
+        <button class="btn" onClick={() => navigate('spike')}>
+          Voice check
+        </button>
+      </div>
+
+      <div class="row">
+        <span class={`pill ${hasKey ? 'ok' : ''}`}>{hasKey ? 'AI grading on' : 'Self-rating (no API key)'}</span>
+        <span class={`pill ${standalone ? 'ok' : 'warn'}`}>{standalone ? 'Installed app' : 'Running in browser'}</span>
+      </div>
+      {!standalone && <p class="faint">To install: Chrome menu, then Add to Home screen or Install app.</p>}
       <p class="faint">{buildLabel()}</p>
     </div>
   )

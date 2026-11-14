@@ -1,0 +1,275 @@
+[
+  {
+    "id": "sql-s6-predict-001",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 1,
+    "type": "predict",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "row_number"
+    ],
+    "code": "SELECT lot_id FROM (\n  SELECT lot_id, ROW_NUMBER() OVER (ORDER BY qty DESC) AS rn\n  FROM lots WHERE lot_id <= 5\n) WHERE rn = 2;",
+    "code_spoken": "From a subquery that numbers lots 1 to 5 with row number over order by qty descending, as rn, select the lot id where rn is 2.",
+    "prompt_spoken": "Lots 1 to 5 have quantities 120, 340, 90, 200 and 120. What does this query return?",
+    "expected": "4",
+    "accept": [],
+    "hints_spoken": [
+      "Row 1 is the biggest. Which lot is second biggest?"
+    ],
+    "model_answer_spoken": "It returns lot 4, the second largest at 200."
+  },
+  {
+    "id": "sql-s6-predict-002",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 1,
+    "type": "predict",
+    "difficulty": 3,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "rank",
+      "ties"
+    ],
+    "code": "SELECT rnk FROM (\n  SELECT lot_id, RANK() OVER (ORDER BY qty DESC) AS rnk\n  FROM lots WHERE lot_id <= 5\n) WHERE lot_id = 3;",
+    "code_spoken": "From a subquery that ranks lots 1 to 5 with rank over order by qty descending, as rnk, select rnk for lot 3.",
+    "prompt_spoken": "Lots 1 to 5 have quantities 120, 340, 90, 200 and 120. Lot 3 is the one with 90. What does this query return?",
+    "expected": "5",
+    "accept": [],
+    "hints_spoken": [
+      "Lots 1 and 5 tie for third.",
+      "Rank skips numbers after a tie."
+    ],
+    "model_answer_spoken": "It returns 5. Lots 1 and 5 tie at rank 3, so rank skips 4 and lot 3 gets 5."
+  },
+  {
+    "id": "sql-s6-predict-003",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 1,
+    "type": "predict",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "running total",
+      "sum over"
+    ],
+    "code": "SELECT SUM(qty) OVER (ORDER BY lot_id) AS running\nFROM lots WHERE lot_id <= 3;",
+    "code_spoken": "Select the sum of qty over order by lot id, as running, from lots where lot id is at most 3.",
+    "prompt_spoken": "Lots 1, 2 and 3 have quantities 120, 340 and 90. What does this query return?",
+    "expected": "120\n460\n550",
+    "accept": [
+      "120 460 550"
+    ],
+    "hints_spoken": [
+      "Each row adds its quantity to the total so far."
+    ],
+    "model_answer_spoken": "It returns a running total of 120, then 460, then 550."
+  },
+  {
+    "id": "sql-s6-predict-004",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 1,
+    "type": "predict",
+    "difficulty": 3,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "lag"
+    ],
+    "code": "SELECT qty - LAG(qty) OVER (ORDER BY lot_id)\nFROM lots WHERE lot_id <= 3;",
+    "code_spoken": "Select qty minus lag of qty over order by lot id, from lots where lot id is at most 3.",
+    "prompt_spoken": "Lots 1, 2 and 3 have quantities 120, 340 and 90. What does this query return?",
+    "expected": "NULL\n220\n-250",
+    "accept": [
+      "null 220 negative 250",
+      "none 220 minus 250"
+    ],
+    "hints_spoken": [
+      "Lag gives the previous row's value. The first row has none."
+    ],
+    "model_answer_spoken": "It returns null, then 220, then negative 250, each lot's change from the lot before. The first lot has no previous lot."
+  },
+  {
+    "id": "sql-s6-explain-001",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 1,
+    "type": "explain",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "row_number",
+      "partition by"
+    ],
+    "code": "SELECT part_id, lot_id,\n  ROW_NUMBER() OVER (PARTITION BY part_id ORDER BY produced_on) AS nth\nFROM lots;",
+    "code_spoken": "Select part id, lot id, and row number over partition by part id, order by produced on, as nth, from lots.",
+    "prompt_spoken": "What does this query do?",
+    "rubric": [
+      "numbers each part's lots",
+      "in production order",
+      "the numbering restarts at 1 for every part"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "It numbers each part's lots in production order, starting again at 1 for every part."
+  },
+  {
+    "id": "sql-s6-explain-002",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 1,
+    "type": "explain",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "avg over",
+      "partition by"
+    ],
+    "code": "SELECT lot_id, qty,\n  AVG(qty) OVER (PARTITION BY part_id) AS part_avg\nFROM lots;",
+    "code_spoken": "Select lot id, qty, and the average qty over partition by part id, as part avg, from lots.",
+    "prompt_spoken": "What does this query do?",
+    "rubric": [
+      "shows every lot",
+      "next to the average quantity of all lots for the same part",
+      "rows are not collapsed the way group by would"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "It shows each lot next to the average quantity for its part, without collapsing rows the way group by would."
+  },
+  {
+    "id": "sql-s6-explain-003",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 1,
+    "type": "explain",
+    "difficulty": 3,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "lag",
+      "partition by"
+    ],
+    "code": "SELECT lot_id, machine_id, produced_on,\n  LAG(produced_on) OVER (PARTITION BY machine_id ORDER BY produced_on) AS prev_run\nFROM lots;",
+    "code_spoken": "Select lot id, machine id, produced on, and lag of produced on over partition by machine id, order by produced on, as previous run, from lots.",
+    "prompt_spoken": "What does this query do?",
+    "rubric": [
+      "for each lot, shows when the same machine made its previous lot",
+      "partitioned by machine",
+      "the first lot on each machine gets null",
+      "useful to see gaps between runs"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "For each lot it shows when the same machine made its previous lot, so you can see the gap between runs. Each machine's first lot gets null."
+  },
+  {
+    "id": "sql-s6-bug-001",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 1,
+    "type": "spot_bug",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "window functions",
+      "where"
+    ],
+    "code": "SELECT lot_id, qty\nFROM lots\nWHERE ROW_NUMBER() OVER (ORDER BY qty DESC) <= 3;",
+    "code_spoken": "Line 1, select lot id and qty. Line 2, from lots. Line 3, where row number over order by qty descending is at most 3.",
+    "prompt_spoken": "This should return the three biggest lots. Which line has the bug, and what's the fix?",
+    "rubric": [
+      "names line 3",
+      "window functions run after where, so they can't be used in it",
+      "compute row number in a subquery or with clause and filter outside"
+    ],
+    "bug": {
+      "line": 3,
+      "fix_spoken": "On line 3, window functions can't go in where. Compute the row number in a subquery, then filter on it outside.",
+      "fixed_code": "SELECT lot_id, qty FROM (\n  SELECT lot_id, qty, ROW_NUMBER() OVER (ORDER BY qty DESC, lot_id) AS rn FROM lots\n) WHERE rn <= 3;"
+    },
+    "order_matters": false,
+    "hints_spoken": [
+      "Window functions are computed after where runs."
+    ],
+    "model_answer_spoken": "Line 3. Window functions are computed after where, so they can't filter there. Number the rows in a subquery and filter outside."
+  },
+  {
+    "id": "sql-s6-bug-002",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 1,
+    "type": "spot_bug",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "partition by"
+    ],
+    "code": "SELECT lot_id, part_id,\n  ROW_NUMBER() OVER (ORDER BY produced_on, lot_id) AS nth\nFROM lots;",
+    "code_spoken": "Line 1, select lot id and part id. Line 2, row number over order by produced on, as nth. Line 3, from lots.",
+    "prompt_spoken": "This should number each part's lots separately, starting at 1 for every part. Which line has the bug, and what's the fix?",
+    "rubric": [
+      "names line 2",
+      "without partition by, numbering runs across all lots",
+      "add partition by part id"
+    ],
+    "bug": {
+      "line": 2,
+      "fix_spoken": "On line 2, add partition by part id inside over.",
+      "fixed_code": "SELECT lot_id, part_id,\n  ROW_NUMBER() OVER (PARTITION BY part_id ORDER BY produced_on, lot_id) AS nth\nFROM lots;"
+    },
+    "hints_spoken": [
+      "What makes the numbering restart?"
+    ],
+    "model_answer_spoken": "Line 2. Without partition by, the numbering runs across every lot. Add partition by part id."
+  },
+  {
+    "id": "sql-s6-concept-001",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 1,
+    "type": "concept",
+    "difficulty": 2,
+    "drive_ok": true,
+    "topics": [
+      "row_number",
+      "rank"
+    ],
+    "prompt_spoken": "What's the difference between row number and rank when values tie?",
+    "rubric": [
+      "row number gives every row a different number",
+      "rank gives tied rows the same number",
+      "rank then skips, so after two rows tied at 3 the next is 5"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Row number gives every row a different number, even on ties. Rank gives tied rows the same number and then skips, so after two rows tied at 3, the next is 5."
+  },
+  {
+    "id": "sql-s6-plan-001",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 1,
+    "type": "plan",
+    "difficulty": 3,
+    "drive_ok": true,
+    "topics": [
+      "lag",
+      "partition by"
+    ],
+    "prompt_spoken": "Plan this out loud. For every lot, show how its quantity changed from the previous lot of the same part.",
+    "rubric": [
+      "select lot id, part id and qty",
+      "lag of qty over partition by part id order by produced on",
+      "subtract the lag from qty to get the change"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Select lot id, part id and qty, plus lag of qty over partition by part id ordered by produced on, and subtract it from qty to get the change."
+  }
+]

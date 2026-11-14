@@ -69,3 +69,9 @@ def run_tests(code, function_name, tests):
 
 def run_tests_json(code, function_name, tests_json):
     return json.dumps(run_tests(code, function_name, json.loads(tests_json)), default=repr)
+
+
+def run_code_json(code):
+    r = run_code(code)
+    r.pop("namespace", None)
+    return json.dumps(r, default=repr)

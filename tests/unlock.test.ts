@@ -71,16 +71,22 @@ describe('session queue', () => {
     for (const d of [...sqlSeen, ...pySeen]) states.set(d.id, state(d.id, '2026-11-13'))
     const q = new SessionQueue({ ...base, profile: 'parked', languageMix: 'both', states, seed: 0 })
     const planned = q.peekAll()
-    expect(planned.length).toBe(8 + 5)
+    expect(planned.length).toBe(8 + 5 + 1)
+    // then one ladder step: the Plan of a ladder in a unit already reached
+    const last = planned[planned.length - 1]
+    expect(last.reason).toBe('ladder')
+    expect(last.drill.type).toBe('plan')
+    expect(last.drill.ladder).toBeTruthy()
     expect(planned.slice(0, 3).every((i) => i.drill.lang === 'sql')).toBe(true)
     expect(planned.slice(3, 6).every((i) => i.drill.lang === 'python')).toBe(true)
     const reviews = planned.filter((i) => i.reason === 'review')
+    expect(planned.filter((i) => i.reason === 'ladder')).toHaveLength(1)
     const fresh = planned.filter((i) => i.reason === 'new')
     expect(reviews.length).toBe(8)
     expect(fresh.length).toBe(5)
     // within each language, reviews come before new drills
     for (const lang of ['sql', 'python']) {
-      const seq = planned.filter((i) => i.drill.lang === lang).map((i) => i.reason)
+      const seq = planned.filter((i) => i.drill.lang === lang && i.reason !== 'ladder').map((i) => i.reason)
       expect(seq.indexOf('new')).toBeGreaterThan(seq.lastIndexOf('review'))
     }
   })
@@ -97,5 +103,20 @@ describe('session queue', () => {
     q.requeue(first.drill)
     const rest = q.peekAll()
     expect(rest.filter((i) => i.drill.id === first.drill.id).length).toBe(1)
+  })
+})
+
+describe('ladders', () => {
+  it('every ladder has plan, sketch and dictate steps sharing one reference', () => {
+    const byLadder = new Map<string, typeof drills>()
+    for (const d of drills.filter((x) => x.ladder)) byLadder.set(d.ladder!, [...(byLadder.get(d.ladder!) ?? []), d])
+    expect(byLadder.size).toBeGreaterThanOrEqual(24)
+    for (const [, steps] of byLadder) {
+      expect(steps.map((s) => s.type).sort()).toEqual(['dictate', 'plan', 'sketch'])
+      const sk = steps.find((s) => s.type === 'sketch')!
+      const di = steps.find((s) => s.type === 'dictate')!
+      expect(di.reference).toBe(sk.reference)
+      expect(di.drive_ok).toBe(false)
+    }
   })
 })

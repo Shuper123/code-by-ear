@@ -271,5 +271,163 @@
     ],
     "hints_spoken": [],
     "model_answer_spoken": "Select lot id, part id and qty, plus lag of qty over partition by part id ordered by produced on, and subtract it from qty to get the change."
+  },
+  {
+    "id": "sql-s6-plan-l011",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 1,
+    "type": "plan",
+    "ladder": "sql-ladder-011",
+    "difficulty": 3,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "row_number",
+      "partition by"
+    ],
+    "prompt_spoken": "Plan this out loud. For every lot, show the lot id, the part id, and the lot's number within its part, counting in lot id order.",
+    "rubric": [
+      "select lot id and part id from lots",
+      "row number over partition by part id",
+      "order by lot id inside over"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Select lot id, part id, and row number over a window partitioned by part id and ordered by lot id."
+  },
+  {
+    "id": "sql-s6-sketch-011",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "sql-ladder-011",
+    "difficulty": 3,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "row_number",
+      "partition by"
+    ],
+    "prompt_spoken": "For every lot, show the lot id, the part id, and the lot's number within its part, counting in lot id order.",
+    "reference": "SELECT lot_id, part_id, ROW_NUMBER() OVER (PARTITION BY part_id ORDER BY lot_id) FROM lots;",
+    "order_matters": false,
+    "vocab": [
+      "lots",
+      "lot_id",
+      "part_id"
+    ],
+    "hints_spoken": [
+      "Row number restarts for each partition.",
+      "Partition by part id, order by lot id."
+    ],
+    "model_answer_spoken": "Select lot id, part id, and row number over partition by part id order by lot id, from lots."
+  },
+  {
+    "id": "sql-s6-dictate-011",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "sql-ladder-011",
+    "difficulty": 3,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "row_number",
+      "partition by"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. For every lot, show the lot id, the part id, and the lot's number within its part, counting in lot id order.",
+    "reference": "SELECT lot_id, part_id, ROW_NUMBER() OVER (PARTITION BY part_id ORDER BY lot_id) FROM lots;",
+    "order_matters": false,
+    "vocab": [
+      "lots",
+      "lot_id",
+      "part_id"
+    ],
+    "hints_spoken": [
+      "Row number restarts for each partition.",
+      "Partition by part id, order by lot id."
+    ],
+    "model_answer_spoken": "Select lot id, part id, and row number over partition by part id order by lot id, from lots."
+  },
+  {
+    "id": "sql-s6-plan-l012",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 1,
+    "type": "plan",
+    "ladder": "sql-ladder-012",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "running total",
+      "sum over"
+    ],
+    "prompt_spoken": "Plan this out loud. Show each lot id, its quantity, and a running total of quantity in lot id order.",
+    "rubric": [
+      "select lot id and qty from lots",
+      "sum of qty over order by lot id",
+      "no group by needed"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Select lot id, quantity, and the sum of quantity over a window ordered by lot id."
+  },
+  {
+    "id": "sql-s6-sketch-012",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "sql-ladder-012",
+    "difficulty": 2,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "running total",
+      "sum over"
+    ],
+    "prompt_spoken": "Show each lot id, its quantity, and a running total of quantity in lot id order.",
+    "reference": "SELECT lot_id, qty, SUM(qty) OVER (ORDER BY lot_id) FROM lots;",
+    "order_matters": false,
+    "vocab": [
+      "lots",
+      "lot_id",
+      "qty"
+    ],
+    "hints_spoken": [
+      "A running total is a sum over a window.",
+      "Order the window by lot id."
+    ],
+    "model_answer_spoken": "Select lot id, qty, and the sum of qty over order by lot id, from lots."
+  },
+  {
+    "id": "sql-s6-dictate-012",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "sql-ladder-012",
+    "difficulty": 2,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "running total",
+      "sum over"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. Show each lot id, its quantity, and a running total of quantity in lot id order.",
+    "reference": "SELECT lot_id, qty, SUM(qty) OVER (ORDER BY lot_id) FROM lots;",
+    "order_matters": false,
+    "vocab": [
+      "lots",
+      "lot_id",
+      "qty"
+    ],
+    "hints_spoken": [
+      "A running total is a sum over a window.",
+      "Order the window by lot id."
+    ],
+    "model_answer_spoken": "Select lot id, qty, and the sum of qty over order by lot id, from lots."
   }
 ]

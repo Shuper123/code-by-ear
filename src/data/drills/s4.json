@@ -290,5 +290,167 @@
     ],
     "hints_spoken": [],
     "model_answer_spoken": "Select from defects, join lots on lot id to get produced on, and join defect codes on defect code to get the description."
+  },
+  {
+    "id": "sql-s4-plan-l007",
+    "lang": "sql",
+    "unit": "S4",
+    "level": 1,
+    "type": "plan",
+    "ladder": "sql-ladder-007",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "inner join"
+    ],
+    "prompt_spoken": "Plan this out loud. List each lot id with the name of its part.",
+    "rubric": [
+      "from lots",
+      "join parts on part id",
+      "select lot id and part name"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Start from lots, join parts on matching part id, and select the lot id and the part name."
+  },
+  {
+    "id": "sql-s4-sketch-007",
+    "lang": "sql",
+    "unit": "S4",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "sql-ladder-007",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "inner join"
+    ],
+    "prompt_spoken": "List each lot id with the name of its part.",
+    "reference": "SELECT l.lot_id, p.part_name FROM lots l JOIN parts p ON p.part_id = l.part_id;",
+    "order_matters": false,
+    "vocab": [
+      "lots",
+      "parts",
+      "lot_id",
+      "part_id",
+      "part_name"
+    ],
+    "hints_spoken": [
+      "The two tables share part id.",
+      "Join parts to lots on part id."
+    ],
+    "model_answer_spoken": "Select lot id and part name from lots joined to parts on part id."
+  },
+  {
+    "id": "sql-s4-dictate-007",
+    "lang": "sql",
+    "unit": "S4",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "sql-ladder-007",
+    "difficulty": 2,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "inner join"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. List each lot id with the name of its part.",
+    "reference": "SELECT l.lot_id, p.part_name FROM lots l JOIN parts p ON p.part_id = l.part_id;",
+    "order_matters": false,
+    "vocab": [
+      "lots",
+      "parts",
+      "lot_id",
+      "part_id",
+      "part_name"
+    ],
+    "hints_spoken": [
+      "The two tables share part id.",
+      "Join parts to lots on part id."
+    ],
+    "model_answer_spoken": "Select lot id and part name from lots joined to parts on part id."
+  },
+  {
+    "id": "sql-s4-plan-l008",
+    "lang": "sql",
+    "unit": "S4",
+    "level": 1,
+    "type": "plan",
+    "ladder": "sql-ladder-008",
+    "difficulty": 3,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "left join",
+      "count"
+    ],
+    "prompt_spoken": "Plan this out loud. List every machine id with the number of lots it made, including machines with none.",
+    "rubric": [
+      "start from machines",
+      "left join lots on machine id",
+      "count lot id, not star, so empty machines get 0",
+      "group by machine id"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Start from machines, left join lots on machine id, count the lot ids so a machine with no lots gets zero, and group by machine id."
+  },
+  {
+    "id": "sql-s4-sketch-008",
+    "lang": "sql",
+    "unit": "S4",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "sql-ladder-008",
+    "difficulty": 3,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "left join",
+      "count"
+    ],
+    "prompt_spoken": "List every machine id with the number of lots it made, including machines with none.",
+    "reference": "SELECT m.machine_id, COUNT(l.lot_id) FROM machines m LEFT JOIN lots l ON l.machine_id = m.machine_id GROUP BY m.machine_id;",
+    "order_matters": false,
+    "vocab": [
+      "machines",
+      "lots",
+      "machine_id",
+      "lot_id"
+    ],
+    "hints_spoken": [
+      "A left join keeps machines with no lots.",
+      "Count lot id so missing lots count as zero."
+    ],
+    "model_answer_spoken": "Select machine id and the count of lot id from machines, left join lots on machine id, grouped by machine id."
+  },
+  {
+    "id": "sql-s4-dictate-008",
+    "lang": "sql",
+    "unit": "S4",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "sql-ladder-008",
+    "difficulty": 3,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "left join",
+      "count"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. List every machine id with the number of lots it made, including machines with none.",
+    "reference": "SELECT m.machine_id, COUNT(l.lot_id) FROM machines m LEFT JOIN lots l ON l.machine_id = m.machine_id GROUP BY m.machine_id;",
+    "order_matters": false,
+    "vocab": [
+      "machines",
+      "lots",
+      "machine_id",
+      "lot_id"
+    ],
+    "hints_spoken": [
+      "A left join keeps machines with no lots.",
+      "Count lot id so missing lots count as zero."
+    ],
+    "model_answer_spoken": "Select machine id and the count of lot id from machines, left join lots on machine id, grouped by machine id."
   }
 ]

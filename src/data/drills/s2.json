@@ -309,5 +309,157 @@
     ],
     "hints_spoken": [],
     "model_answer_spoken": "Select from customers where name is like B percent, and signup date is between March 1st and March 31st, 2026."
+  },
+  {
+    "id": "sql-s2-plan-l003",
+    "lang": "sql",
+    "unit": "S2",
+    "level": 1,
+    "type": "plan",
+    "ladder": "sql-ladder-003",
+    "difficulty": 1,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "null"
+    ],
+    "prompt_spoken": "Plan this out loud. Find the lot ids that have no shift recorded.",
+    "rubric": [
+      "select lot id from lots",
+      "filter where shift is null",
+      "use is null, not equals null"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Select lot id from lots where shift is null. Equals null would match nothing."
+  },
+  {
+    "id": "sql-s2-sketch-003",
+    "lang": "sql",
+    "unit": "S2",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "sql-ladder-003",
+    "difficulty": 1,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "null"
+    ],
+    "prompt_spoken": "Find the lot ids that have no shift recorded.",
+    "reference": "SELECT lot_id FROM lots WHERE shift IS NULL;",
+    "order_matters": false,
+    "vocab": [
+      "lots",
+      "lot_id",
+      "shift"
+    ],
+    "hints_spoken": [
+      "Missing values are null.",
+      "Use is null."
+    ],
+    "model_answer_spoken": "Select lot id from lots where shift is null."
+  },
+  {
+    "id": "sql-s2-dictate-003",
+    "lang": "sql",
+    "unit": "S2",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "sql-ladder-003",
+    "difficulty": 1,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "null"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. Find the lot ids that have no shift recorded.",
+    "reference": "SELECT lot_id FROM lots WHERE shift IS NULL;",
+    "order_matters": false,
+    "vocab": [
+      "lots",
+      "lot_id",
+      "shift"
+    ],
+    "hints_spoken": [
+      "Missing values are null.",
+      "Use is null."
+    ],
+    "model_answer_spoken": "Select lot id from lots where shift is null."
+  },
+  {
+    "id": "sql-s2-plan-l006",
+    "lang": "sql",
+    "unit": "S2",
+    "level": 1,
+    "type": "plan",
+    "ladder": "sql-ladder-006",
+    "difficulty": 1,
+    "drive_ok": true,
+    "dataset": "shop",
+    "topics": [
+      "in"
+    ],
+    "prompt_spoken": "Plan this out loud. List the names of customers who live in Riverton or Lakeside.",
+    "rubric": [
+      "select name from customers",
+      "filter city in Riverton or Lakeside",
+      "in, or two conditions joined by or"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Select name from customers where city is in Riverton or Lakeside."
+  },
+  {
+    "id": "sql-s2-sketch-006",
+    "lang": "sql",
+    "unit": "S2",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "sql-ladder-006",
+    "difficulty": 1,
+    "drive_ok": true,
+    "dataset": "shop",
+    "topics": [
+      "in"
+    ],
+    "prompt_spoken": "List the names of customers who live in Riverton or Lakeside.",
+    "reference": "SELECT name FROM customers WHERE city IN ('Riverton', 'Lakeside');",
+    "order_matters": false,
+    "vocab": [
+      "customers",
+      "name",
+      "city"
+    ],
+    "hints_spoken": [
+      "Filter on the city column.",
+      "In takes a list of values."
+    ],
+    "model_answer_spoken": "Select name from customers where city is in Riverton or Lakeside."
+  },
+  {
+    "id": "sql-s2-dictate-006",
+    "lang": "sql",
+    "unit": "S2",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "sql-ladder-006",
+    "difficulty": 1,
+    "drive_ok": false,
+    "dataset": "shop",
+    "topics": [
+      "in"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. List the names of customers who live in Riverton or Lakeside.",
+    "reference": "SELECT name FROM customers WHERE city IN ('Riverton', 'Lakeside');",
+    "order_matters": false,
+    "vocab": [
+      "customers",
+      "name",
+      "city"
+    ],
+    "hints_spoken": [
+      "Filter on the city column.",
+      "In takes a list of values."
+    ],
+    "model_answer_spoken": "Select name from customers where city is in Riverton or Lakeside."
   }
 ]

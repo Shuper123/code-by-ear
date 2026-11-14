@@ -281,5 +281,260 @@
     ],
     "hints_spoken": [],
     "model_answer_spoken": "Define a function with the list and the threshold as parameters. Start a count at zero. Loop over the quantities and add one when a quantity is above the threshold. Return the count."
+  },
+  {
+    "id": "py-p4-plan-l007",
+    "lang": "python",
+    "unit": "P4",
+    "level": 1,
+    "type": "plan",
+    "ladder": "py-ladder-007",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "functions",
+      "guard clause"
+    ],
+    "prompt_spoken": "Plan this out loud. Write a function, scrap rate, that returns defects divided by produced, or 0 when produced is 0.",
+    "rubric": [
+      "check produced is 0 first",
+      "return 0 in that case",
+      "otherwise return defects divided by produced"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "If produced is zero return zero, so nothing divides by zero. Otherwise return defects divided by produced."
+  },
+  {
+    "id": "py-p4-sketch-007",
+    "lang": "python",
+    "unit": "P4",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "py-ladder-007",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "functions",
+      "guard clause"
+    ],
+    "prompt_spoken": "Write a function, scrap rate, that returns defects divided by produced, or 0 when produced is 0.",
+    "reference": "def scrap_rate(defects, produced):\n    if produced == 0:\n        return 0\n    return defects / produced",
+    "signature": "def scrap_rate(defects, produced):",
+    "function_name": "scrap_rate",
+    "tests": [
+      {
+        "args": [
+          5,
+          20
+        ],
+        "expected": 0.25
+      },
+      {
+        "args": [
+          0,
+          10
+        ],
+        "expected": 0.0
+      },
+      {
+        "args": [
+          3,
+          0
+        ],
+        "expected": 0
+      }
+    ],
+    "vocab": [
+      "scrap_rate",
+      "defects",
+      "produced"
+    ],
+    "hints_spoken": [
+      "Guard against dividing by zero first."
+    ],
+    "model_answer_spoken": "Define scrap rate of defects and produced. If produced is equal to 0, return 0. Return defects divided by produced."
+  },
+  {
+    "id": "py-p4-dictate-007",
+    "lang": "python",
+    "unit": "P4",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "py-ladder-007",
+    "difficulty": 1,
+    "drive_ok": false,
+    "topics": [
+      "functions",
+      "guard clause"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. Write a function, scrap rate, that returns defects divided by produced, or 0 when produced is 0.",
+    "reference": "def scrap_rate(defects, produced):\n    if produced == 0:\n        return 0\n    return defects / produced",
+    "signature": "def scrap_rate(defects, produced):",
+    "function_name": "scrap_rate",
+    "tests": [
+      {
+        "args": [
+          5,
+          20
+        ],
+        "expected": 0.25
+      },
+      {
+        "args": [
+          0,
+          10
+        ],
+        "expected": 0.0
+      },
+      {
+        "args": [
+          3,
+          0
+        ],
+        "expected": 0
+      }
+    ],
+    "vocab": [
+      "scrap_rate",
+      "defects",
+      "produced"
+    ],
+    "hints_spoken": [
+      "Guard against dividing by zero first."
+    ],
+    "model_answer_spoken": "Define scrap rate of defects and produced. If produced is equal to 0, return 0. Return defects divided by produced."
+  },
+  {
+    "id": "py-p4-plan-l008",
+    "lang": "python",
+    "unit": "P4",
+    "level": 1,
+    "type": "plan",
+    "ladder": "py-ladder-008",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "functions",
+      "empty input"
+    ],
+    "prompt_spoken": "Plan this out loud. Write a function, average, that returns the average of a list of numbers, or 0 for an empty list.",
+    "rubric": [
+      "check for an empty list first and return 0",
+      "otherwise sum the numbers",
+      "divide by how many there are",
+      "return it"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "If the list is empty return zero. Otherwise return the sum divided by the length."
+  },
+  {
+    "id": "py-p4-sketch-008",
+    "lang": "python",
+    "unit": "P4",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "py-ladder-008",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "functions",
+      "empty input"
+    ],
+    "prompt_spoken": "Write a function, average, that returns the average of a list of numbers, or 0 for an empty list.",
+    "reference": "def average(nums):\n    if not nums:\n        return 0\n    return sum(nums) / len(nums)",
+    "signature": "def average(nums):",
+    "function_name": "average",
+    "tests": [
+      {
+        "args": [
+          [
+            2,
+            4,
+            6
+          ]
+        ],
+        "expected": 4.0
+      },
+      {
+        "args": [
+          []
+        ],
+        "expected": 0
+      },
+      {
+        "args": [
+          [
+            5
+          ]
+        ],
+        "expected": 5.0
+      }
+    ],
+    "vocab": [
+      "average",
+      "nums",
+      "sum",
+      "len"
+    ],
+    "hints_spoken": [
+      "What should an empty list give?",
+      "sum divided by len."
+    ],
+    "model_answer_spoken": "Define average of nums. If not nums, return 0. Return sum of nums divided by len of nums."
+  },
+  {
+    "id": "py-p4-dictate-008",
+    "lang": "python",
+    "unit": "P4",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "py-ladder-008",
+    "difficulty": 1,
+    "drive_ok": false,
+    "topics": [
+      "functions",
+      "empty input"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. Write a function, average, that returns the average of a list of numbers, or 0 for an empty list.",
+    "reference": "def average(nums):\n    if not nums:\n        return 0\n    return sum(nums) / len(nums)",
+    "signature": "def average(nums):",
+    "function_name": "average",
+    "tests": [
+      {
+        "args": [
+          [
+            2,
+            4,
+            6
+          ]
+        ],
+        "expected": 4.0
+      },
+      {
+        "args": [
+          []
+        ],
+        "expected": 0
+      },
+      {
+        "args": [
+          [
+            5
+          ]
+        ],
+        "expected": 5.0
+      }
+    ],
+    "vocab": [
+      "average",
+      "nums",
+      "sum",
+      "len"
+    ],
+    "hints_spoken": [
+      "What should an empty list give?",
+      "sum divided by len."
+    ],
+    "model_answer_spoken": "Define average of nums. If not nums, return 0. Return sum of nums divided by len of nums."
   }
 ]

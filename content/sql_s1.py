@@ -159,3 +159,28 @@ DRILLS = [
                              "descending, and limit to 5."),
     ),
 ]
+
+# ---------- ladders ----------
+from _ladder import ladder  # noqa: E402
+
+DRILLS += ladder(
+    "sql", UNIT, 1, dataset="factory", topics=["where", "order by"], difficulty=1, sketch_drive_ok=True,
+    order_matters=True,
+    task="List the part name and unit cost of every part on line A, most expensive first.",
+    plan_rubric=["select part name and unit cost from parts", "keep only line A", "order by unit cost, descending"],
+    plan_model="Select the name and cost from parts, keep only line A, and sort by cost from highest to lowest.",
+    reference="SELECT part_name, unit_cost FROM parts WHERE line = 'A' ORDER BY unit_cost DESC;",
+    vocab=["parts", "part_name", "unit_cost", "line"],
+    hints=["Filter on line A.", "Sort by unit cost, descending."],
+    model_answer="Select part name and unit cost from parts where line is A, order by unit cost descending.",
+)
+DRILLS += ladder(
+    "sql", UNIT, 2, dataset="factory", topics=["order by", "limit"], difficulty=1, sketch_drive_ok=True,
+    task="Show the lot id and quantity of the five largest lots.",
+    plan_rubric=["select lot id and qty from lots", "order by qty descending", "limit 5"],
+    plan_model="Select lot id and quantity from lots, sort by quantity from largest down, and keep the first five.",
+    reference="SELECT lot_id, qty FROM lots ORDER BY qty DESC LIMIT 5;",
+    vocab=["lots", "lot_id", "qty"],
+    hints=["Sort from the largest quantity down.", "Then keep only five rows."],
+    model_answer="Select lot id and qty from lots, order by qty descending, limit 5.",
+)

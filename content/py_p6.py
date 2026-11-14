@@ -168,3 +168,50 @@ DRILLS = [
                              "append it. In the except value error branch, skip it. Return the result."),
     ),
 ]
+
+# ---------- ladders ----------
+from _ladder import ladder  # noqa: E402
+
+DRILLS += ladder(
+    "python", UNIT, 11, topics=["list comprehension"], difficulty=2, sketch_drive_ok=True,
+    task="Write a function, squares of evens, that returns a list of the squares of the even numbers in a list, in order.",
+    plan_rubric=["loop over the numbers or use a comprehension", "keep only even numbers", "square each one",
+                 "return the new list"],
+    plan_model="Build a new list with a comprehension of n times n, for each n in the list, if n is even. Return it.",
+    signature="def squares_of_evens(nums):",
+    function_name="squares_of_evens",
+    reference="""
+        def squares_of_evens(nums):
+            return [n * n for n in nums if n % 2 == 0]
+    """,
+    tests=[dict(args=[[1, 2, 3, 4]], expected=[4, 16]), dict(args=[[]], expected=[]), dict(args=[[5, 7]], expected=[])],
+    vocab=["squares_of_evens", "nums"],
+    hints=["Even means n mod 2 is 0.", "A comprehension can filter and transform at once."],
+    model_answer="Define squares of evens of nums. Return a list of n times n, for each n in nums, if n mod 2 is equal to 0.",
+)
+DRILLS += ladder(
+    "python", UNIT, 12, topics=["try", "conversion"], difficulty=2,
+    task=("Write a function, parse ints, that turns a list of strings into a list of integers, skipping any string "
+          "that isn't a whole number."),
+    plan_rubric=["an empty result list", "loop over the strings", "try int and append", "except value error skips it",
+                 "return the result"],
+    plan_model="Make an empty result. For each string, try converting with int and append it. On a value error, skip it. Return the result.",
+    signature="def parse_ints(strings):",
+    function_name="parse_ints",
+    reference="""
+        def parse_ints(strings):
+            result = []
+            for s in strings:
+                try:
+                    result.append(int(s))
+                except ValueError:
+                    pass
+            return result
+    """,
+    tests=[dict(args=[["1", "x", "3"]], expected=[1, 3]), dict(args=[[]], expected=[]),
+           dict(args=[["-2", "4.5", "7"]], expected=[-2, 7])],
+    vocab=["parse_ints", "strings", "result", "int", "ValueError"],
+    hints=["int raises a value error on bad input.", "Catch it and skip that string."],
+    model_answer=("Define parse ints of strings. result equals an empty list. For each s in strings, try to append "
+                  "int of s to result. Except value error, pass. Return result."),
+)

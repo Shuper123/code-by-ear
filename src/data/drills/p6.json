@@ -286,5 +286,293 @@
     ],
     "hints_spoken": [],
     "model_answer_spoken": "Make an empty result list. Loop over the strings. Inside a try, convert each one with int and append it. In the except value error branch, skip it. Return the result."
+  },
+  {
+    "id": "py-p6-plan-l011",
+    "lang": "python",
+    "unit": "P6",
+    "level": 1,
+    "type": "plan",
+    "ladder": "py-ladder-011",
+    "difficulty": 2,
+    "drive_ok": true,
+    "topics": [
+      "list comprehension"
+    ],
+    "prompt_spoken": "Plan this out loud. Write a function, squares of evens, that returns a list of the squares of the even numbers in a list, in order.",
+    "rubric": [
+      "loop over the numbers or use a comprehension",
+      "keep only even numbers",
+      "square each one",
+      "return the new list"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Build a new list with a comprehension of n times n, for each n in the list, if n is even. Return it."
+  },
+  {
+    "id": "py-p6-sketch-011",
+    "lang": "python",
+    "unit": "P6",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "py-ladder-011",
+    "difficulty": 2,
+    "drive_ok": true,
+    "topics": [
+      "list comprehension"
+    ],
+    "prompt_spoken": "Write a function, squares of evens, that returns a list of the squares of the even numbers in a list, in order.",
+    "reference": "def squares_of_evens(nums):\n    return [n * n for n in nums if n % 2 == 0]",
+    "signature": "def squares_of_evens(nums):",
+    "function_name": "squares_of_evens",
+    "tests": [
+      {
+        "args": [
+          [
+            1,
+            2,
+            3,
+            4
+          ]
+        ],
+        "expected": [
+          4,
+          16
+        ]
+      },
+      {
+        "args": [
+          []
+        ],
+        "expected": []
+      },
+      {
+        "args": [
+          [
+            5,
+            7
+          ]
+        ],
+        "expected": []
+      }
+    ],
+    "vocab": [
+      "squares_of_evens",
+      "nums"
+    ],
+    "hints_spoken": [
+      "Even means n mod 2 is 0.",
+      "A comprehension can filter and transform at once."
+    ],
+    "model_answer_spoken": "Define squares of evens of nums. Return a list of n times n, for each n in nums, if n mod 2 is equal to 0."
+  },
+  {
+    "id": "py-p6-dictate-011",
+    "lang": "python",
+    "unit": "P6",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "py-ladder-011",
+    "difficulty": 2,
+    "drive_ok": false,
+    "topics": [
+      "list comprehension"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. Write a function, squares of evens, that returns a list of the squares of the even numbers in a list, in order.",
+    "reference": "def squares_of_evens(nums):\n    return [n * n for n in nums if n % 2 == 0]",
+    "signature": "def squares_of_evens(nums):",
+    "function_name": "squares_of_evens",
+    "tests": [
+      {
+        "args": [
+          [
+            1,
+            2,
+            3,
+            4
+          ]
+        ],
+        "expected": [
+          4,
+          16
+        ]
+      },
+      {
+        "args": [
+          []
+        ],
+        "expected": []
+      },
+      {
+        "args": [
+          [
+            5,
+            7
+          ]
+        ],
+        "expected": []
+      }
+    ],
+    "vocab": [
+      "squares_of_evens",
+      "nums"
+    ],
+    "hints_spoken": [
+      "Even means n mod 2 is 0.",
+      "A comprehension can filter and transform at once."
+    ],
+    "model_answer_spoken": "Define squares of evens of nums. Return a list of n times n, for each n in nums, if n mod 2 is equal to 0."
+  },
+  {
+    "id": "py-p6-plan-l012",
+    "lang": "python",
+    "unit": "P6",
+    "level": 1,
+    "type": "plan",
+    "ladder": "py-ladder-012",
+    "difficulty": 2,
+    "drive_ok": true,
+    "topics": [
+      "try",
+      "conversion"
+    ],
+    "prompt_spoken": "Plan this out loud. Write a function, parse ints, that turns a list of strings into a list of integers, skipping any string that isn't a whole number.",
+    "rubric": [
+      "an empty result list",
+      "loop over the strings",
+      "try int and append",
+      "except value error skips it",
+      "return the result"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Make an empty result. For each string, try converting with int and append it. On a value error, skip it. Return the result."
+  },
+  {
+    "id": "py-p6-sketch-012",
+    "lang": "python",
+    "unit": "P6",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "py-ladder-012",
+    "difficulty": 2,
+    "drive_ok": false,
+    "topics": [
+      "try",
+      "conversion"
+    ],
+    "prompt_spoken": "Write a function, parse ints, that turns a list of strings into a list of integers, skipping any string that isn't a whole number.",
+    "reference": "def parse_ints(strings):\n    result = []\n    for s in strings:\n        try:\n            result.append(int(s))\n        except ValueError:\n            pass\n    return result",
+    "signature": "def parse_ints(strings):",
+    "function_name": "parse_ints",
+    "tests": [
+      {
+        "args": [
+          [
+            "1",
+            "x",
+            "3"
+          ]
+        ],
+        "expected": [
+          1,
+          3
+        ]
+      },
+      {
+        "args": [
+          []
+        ],
+        "expected": []
+      },
+      {
+        "args": [
+          [
+            "-2",
+            "4.5",
+            "7"
+          ]
+        ],
+        "expected": [
+          -2,
+          7
+        ]
+      }
+    ],
+    "vocab": [
+      "parse_ints",
+      "strings",
+      "result",
+      "int",
+      "ValueError"
+    ],
+    "hints_spoken": [
+      "int raises a value error on bad input.",
+      "Catch it and skip that string."
+    ],
+    "model_answer_spoken": "Define parse ints of strings. result equals an empty list. For each s in strings, try to append int of s to result. Except value error, pass. Return result."
+  },
+  {
+    "id": "py-p6-dictate-012",
+    "lang": "python",
+    "unit": "P6",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "py-ladder-012",
+    "difficulty": 2,
+    "drive_ok": false,
+    "topics": [
+      "try",
+      "conversion"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. Write a function, parse ints, that turns a list of strings into a list of integers, skipping any string that isn't a whole number.",
+    "reference": "def parse_ints(strings):\n    result = []\n    for s in strings:\n        try:\n            result.append(int(s))\n        except ValueError:\n            pass\n    return result",
+    "signature": "def parse_ints(strings):",
+    "function_name": "parse_ints",
+    "tests": [
+      {
+        "args": [
+          [
+            "1",
+            "x",
+            "3"
+          ]
+        ],
+        "expected": [
+          1,
+          3
+        ]
+      },
+      {
+        "args": [
+          []
+        ],
+        "expected": []
+      },
+      {
+        "args": [
+          [
+            "-2",
+            "4.5",
+            "7"
+          ]
+        ],
+        "expected": [
+          -2,
+          7
+        ]
+      }
+    ],
+    "vocab": [
+      "parse_ints",
+      "strings",
+      "result",
+      "int",
+      "ValueError"
+    ],
+    "hints_spoken": [
+      "int raises a value error on bad input.",
+      "Catch it and skip that string."
+    ],
+    "model_answer_spoken": "Define parse ints of strings. result equals an empty list. For each s in strings, try to append int of s to result. Except value error, pass. Return result."
   }
 ]

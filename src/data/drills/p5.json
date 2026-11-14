@@ -282,5 +282,321 @@
     ],
     "hints_spoken": [],
     "model_answer_spoken": "Count each code with a dictionary, adding one each time, or use Counter. Then pick the key with the largest count, for example max with the counts as the key."
+  },
+  {
+    "id": "py-p5-plan-l009",
+    "lang": "python",
+    "unit": "P5",
+    "level": 1,
+    "type": "plan",
+    "ladder": "py-ladder-009",
+    "difficulty": 2,
+    "drive_ok": true,
+    "topics": [
+      "dictionaries",
+      "counting"
+    ],
+    "prompt_spoken": "Plan this out loud. Write a function, count words, that takes a list of words and returns a dictionary mapping each word to how many times it appears.",
+    "rubric": [
+      "start an empty dictionary",
+      "loop over the words",
+      "add one to the word's count, starting at zero",
+      "return the dictionary"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Start an empty dictionary. For each word, set its count to the old count, or zero, plus one. Return the dictionary."
+  },
+  {
+    "id": "py-p5-sketch-009",
+    "lang": "python",
+    "unit": "P5",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "py-ladder-009",
+    "difficulty": 2,
+    "drive_ok": false,
+    "topics": [
+      "dictionaries",
+      "counting"
+    ],
+    "prompt_spoken": "Write a function, count words, that takes a list of words and returns a dictionary mapping each word to how many times it appears.",
+    "reference": "def count_words(words):\n    counts = {}\n    for w in words:\n        counts[w] = counts.get(w, 0) + 1\n    return counts",
+    "signature": "def count_words(words):",
+    "function_name": "count_words",
+    "tests": [
+      {
+        "args": [
+          [
+            "pin",
+            "cap",
+            "pin"
+          ]
+        ],
+        "expected": {
+          "pin": 2,
+          "cap": 1
+        }
+      },
+      {
+        "args": [
+          []
+        ],
+        "expected": {}
+      },
+      {
+        "args": [
+          [
+            "a"
+          ]
+        ],
+        "expected": {
+          "a": 1
+        }
+      }
+    ],
+    "vocab": [
+      "count_words",
+      "words",
+      "counts",
+      "get"
+    ],
+    "hints_spoken": [
+      "get with a default of 0 handles new words."
+    ],
+    "model_answer_spoken": "Define count words of words. counts equals an empty dictionary. For each w in words, counts at w equals counts dot get of w with default 0, plus 1. Return counts."
+  },
+  {
+    "id": "py-p5-dictate-009",
+    "lang": "python",
+    "unit": "P5",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "py-ladder-009",
+    "difficulty": 2,
+    "drive_ok": false,
+    "topics": [
+      "dictionaries",
+      "counting"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. Write a function, count words, that takes a list of words and returns a dictionary mapping each word to how many times it appears.",
+    "reference": "def count_words(words):\n    counts = {}\n    for w in words:\n        counts[w] = counts.get(w, 0) + 1\n    return counts",
+    "signature": "def count_words(words):",
+    "function_name": "count_words",
+    "tests": [
+      {
+        "args": [
+          [
+            "pin",
+            "cap",
+            "pin"
+          ]
+        ],
+        "expected": {
+          "pin": 2,
+          "cap": 1
+        }
+      },
+      {
+        "args": [
+          []
+        ],
+        "expected": {}
+      },
+      {
+        "args": [
+          [
+            "a"
+          ]
+        ],
+        "expected": {
+          "a": 1
+        }
+      }
+    ],
+    "vocab": [
+      "count_words",
+      "words",
+      "counts",
+      "get"
+    ],
+    "hints_spoken": [
+      "get with a default of 0 handles new words."
+    ],
+    "model_answer_spoken": "Define count words of words. counts equals an empty dictionary. For each w in words, counts at w equals counts dot get of w with default 0, plus 1. Return counts."
+  },
+  {
+    "id": "py-p5-plan-l010",
+    "lang": "python",
+    "unit": "P5",
+    "level": 1,
+    "type": "plan",
+    "ladder": "py-ladder-010",
+    "difficulty": 2,
+    "drive_ok": true,
+    "topics": [
+      "sets",
+      "intersection"
+    ],
+    "prompt_spoken": "Plan this out loud. Write a function, common, that takes two lists and returns a sorted list of the values that appear in both.",
+    "rubric": [
+      "turn both lists into sets",
+      "intersect them",
+      "sort the result into a list",
+      "return it"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Make a set from each list, take their intersection, sort it, and return the sorted list."
+  },
+  {
+    "id": "py-p5-sketch-010",
+    "lang": "python",
+    "unit": "P5",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "py-ladder-010",
+    "difficulty": 2,
+    "drive_ok": false,
+    "topics": [
+      "sets",
+      "intersection"
+    ],
+    "prompt_spoken": "Write a function, common, that takes two lists and returns a sorted list of the values that appear in both.",
+    "reference": "def common(a, b):\n    return sorted(set(a) & set(b))",
+    "signature": "def common(a, b):",
+    "function_name": "common",
+    "tests": [
+      {
+        "args": [
+          [
+            1,
+            2,
+            3
+          ],
+          [
+            2,
+            3,
+            4
+          ]
+        ],
+        "expected": [
+          2,
+          3
+        ]
+      },
+      {
+        "args": [
+          [
+            1
+          ],
+          [
+            2
+          ]
+        ],
+        "expected": []
+      },
+      {
+        "args": [
+          [
+            3,
+            1,
+            3
+          ],
+          [
+            3
+          ]
+        ],
+        "expected": [
+          3
+        ]
+      }
+    ],
+    "vocab": [
+      "common",
+      "a",
+      "b",
+      "set",
+      "sorted"
+    ],
+    "hints_spoken": [
+      "Sets have an intersection.",
+      "sorted turns a set into a sorted list."
+    ],
+    "model_answer_spoken": "Define common of a and b. Return sorted of set of a intersect set of b."
+  },
+  {
+    "id": "py-p5-dictate-010",
+    "lang": "python",
+    "unit": "P5",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "py-ladder-010",
+    "difficulty": 2,
+    "drive_ok": false,
+    "topics": [
+      "sets",
+      "intersection"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. Write a function, common, that takes two lists and returns a sorted list of the values that appear in both.",
+    "reference": "def common(a, b):\n    return sorted(set(a) & set(b))",
+    "signature": "def common(a, b):",
+    "function_name": "common",
+    "tests": [
+      {
+        "args": [
+          [
+            1,
+            2,
+            3
+          ],
+          [
+            2,
+            3,
+            4
+          ]
+        ],
+        "expected": [
+          2,
+          3
+        ]
+      },
+      {
+        "args": [
+          [
+            1
+          ],
+          [
+            2
+          ]
+        ],
+        "expected": []
+      },
+      {
+        "args": [
+          [
+            3,
+            1,
+            3
+          ],
+          [
+            3
+          ]
+        ],
+        "expected": [
+          3
+        ]
+      }
+    ],
+    "vocab": [
+      "common",
+      "a",
+      "b",
+      "set",
+      "sorted"
+    ],
+    "hints_spoken": [
+      "Sets have an intersection.",
+      "sorted turns a set into a sorted list."
+    ],
+    "model_answer_spoken": "Define common of a and b. Return sorted of set of a intersect set of b."
   }
 ]

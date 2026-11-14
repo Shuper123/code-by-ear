@@ -320,5 +320,260 @@
     ],
     "hints_spoken": [],
     "model_answer_spoken": "First uppercase the part name with upper. Then build the label with an f string that puts the uppercased name, a dash, and the line letter together. Then print or return it."
+  },
+  {
+    "id": "py-p1-plan-l001",
+    "lang": "python",
+    "unit": "P1",
+    "level": 1,
+    "type": "plan",
+    "ladder": "py-ladder-001",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "strings",
+      "f-strings"
+    ],
+    "prompt_spoken": "Plan this out loud. Write a function, make label, that takes a part name and a line letter, and returns the name in capitals, then a dash, then the line letter.",
+    "rubric": [
+      "a function with name and line parameters",
+      "uppercase the name",
+      "join name, dash and line",
+      "return the result"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Define make label with name and line. Uppercase the name, put a dash and the line after it, and return that."
+  },
+  {
+    "id": "py-p1-sketch-001",
+    "lang": "python",
+    "unit": "P1",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "py-ladder-001",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "strings",
+      "f-strings"
+    ],
+    "prompt_spoken": "Write a function, make label, that takes a part name and a line letter, and returns the name in capitals, then a dash, then the line letter.",
+    "reference": "def make_label(name, line):\n    return f\"{name.upper()}-{line}\"",
+    "signature": "def make_label(name, line):",
+    "function_name": "make_label",
+    "tests": [
+      {
+        "args": [
+          "bracket",
+          "A"
+        ],
+        "expected": "BRACKET-A"
+      },
+      {
+        "args": [
+          "clip",
+          "C"
+        ],
+        "expected": "CLIP-C"
+      },
+      {
+        "args": [
+          "Cover",
+          "b"
+        ],
+        "expected": "COVER-b"
+      }
+    ],
+    "vocab": [
+      "make_label",
+      "name",
+      "line",
+      "upper"
+    ],
+    "hints_spoken": [
+      "name dot upper gives capitals.",
+      "An f string can join the pieces."
+    ],
+    "model_answer_spoken": "Define make label of name and line. Return an f string with name dot upper, a dash, then line."
+  },
+  {
+    "id": "py-p1-dictate-001",
+    "lang": "python",
+    "unit": "P1",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "py-ladder-001",
+    "difficulty": 1,
+    "drive_ok": false,
+    "topics": [
+      "strings",
+      "f-strings"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. Write a function, make label, that takes a part name and a line letter, and returns the name in capitals, then a dash, then the line letter.",
+    "reference": "def make_label(name, line):\n    return f\"{name.upper()}-{line}\"",
+    "signature": "def make_label(name, line):",
+    "function_name": "make_label",
+    "tests": [
+      {
+        "args": [
+          "bracket",
+          "A"
+        ],
+        "expected": "BRACKET-A"
+      },
+      {
+        "args": [
+          "clip",
+          "C"
+        ],
+        "expected": "CLIP-C"
+      },
+      {
+        "args": [
+          "Cover",
+          "b"
+        ],
+        "expected": "COVER-b"
+      }
+    ],
+    "vocab": [
+      "make_label",
+      "name",
+      "line",
+      "upper"
+    ],
+    "hints_spoken": [
+      "name dot upper gives capitals.",
+      "An f string can join the pieces."
+    ],
+    "model_answer_spoken": "Define make label of name and line. Return an f string with name dot upper, a dash, then line."
+  },
+  {
+    "id": "py-p1-plan-l002",
+    "lang": "python",
+    "unit": "P1",
+    "level": 1,
+    "type": "plan",
+    "ladder": "py-ladder-002",
+    "difficulty": 2,
+    "drive_ok": true,
+    "topics": [
+      "strings",
+      "split",
+      "loops"
+    ],
+    "prompt_spoken": "Plan this out loud. Write a function, initials, that takes a full name and returns the first letter of each word in capitals. For ana park it returns AP.",
+    "rubric": [
+      "split the name into words",
+      "take the first letter of each word",
+      "uppercase and join them",
+      "return the result"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Split the full name into words. For each word take the first letter in capitals, add it to a result string, and return it."
+  },
+  {
+    "id": "py-p1-sketch-002",
+    "lang": "python",
+    "unit": "P1",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "py-ladder-002",
+    "difficulty": 2,
+    "drive_ok": false,
+    "topics": [
+      "strings",
+      "split",
+      "loops"
+    ],
+    "prompt_spoken": "Write a function, initials, that takes a full name and returns the first letter of each word in capitals. For ana park it returns AP.",
+    "reference": "def initials(full_name):\n    result = \"\"\n    for word in full_name.split():\n        result += word[0].upper()\n    return result",
+    "signature": "def initials(full_name):",
+    "function_name": "initials",
+    "tests": [
+      {
+        "args": [
+          "ana park"
+        ],
+        "expected": "AP"
+      },
+      {
+        "args": [
+          "Ben Reyes"
+        ],
+        "expected": "BR"
+      },
+      {
+        "args": [
+          "cara jo stone"
+        ],
+        "expected": "CJS"
+      }
+    ],
+    "vocab": [
+      "initials",
+      "full_name",
+      "split",
+      "upper",
+      "result",
+      "word"
+    ],
+    "hints_spoken": [
+      "split gives you the words.",
+      "word at index 0 is the first letter."
+    ],
+    "model_answer_spoken": "Define initials of full name. Start result as an empty string. For each word in full name dot split, add word at index 0, uppercased, to result. Return result."
+  },
+  {
+    "id": "py-p1-dictate-002",
+    "lang": "python",
+    "unit": "P1",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "py-ladder-002",
+    "difficulty": 2,
+    "drive_ok": false,
+    "topics": [
+      "strings",
+      "split",
+      "loops"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. Write a function, initials, that takes a full name and returns the first letter of each word in capitals. For ana park it returns AP.",
+    "reference": "def initials(full_name):\n    result = \"\"\n    for word in full_name.split():\n        result += word[0].upper()\n    return result",
+    "signature": "def initials(full_name):",
+    "function_name": "initials",
+    "tests": [
+      {
+        "args": [
+          "ana park"
+        ],
+        "expected": "AP"
+      },
+      {
+        "args": [
+          "Ben Reyes"
+        ],
+        "expected": "BR"
+      },
+      {
+        "args": [
+          "cara jo stone"
+        ],
+        "expected": "CJS"
+      }
+    ],
+    "vocab": [
+      "initials",
+      "full_name",
+      "split",
+      "upper",
+      "result",
+      "word"
+    ],
+    "hints_spoken": [
+      "split gives you the words.",
+      "word at index 0 is the first letter."
+    ],
+    "model_answer_spoken": "Define initials of full name. Start result as an empty string. For each word in full name dot split, add word at index 0, uppercased, to result. Return result."
   }
 ]

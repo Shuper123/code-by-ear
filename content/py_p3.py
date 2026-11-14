@@ -185,3 +185,54 @@ DRILLS = [
                              "add 1 to the counter. After the loop, print the counter."),
     ),
 ]
+
+# ---------- ladders ----------
+from _ladder import ladder  # noqa: E402
+
+DRILLS += ladder(
+    "python", UNIT, 5, topics=["loops", "counting"], difficulty=1, sketch_drive_ok=True,
+    task=("Write a function, count above, that takes a list of numbers and a limit, and returns how many numbers "
+          "are greater than the limit."),
+    plan_rubric=["a counter starting at zero", "loop over the numbers", "add one when a number is greater than the limit",
+                 "return the counter"],
+    plan_model="Start a count at zero. Loop over the numbers, add one whenever a number is greater than the limit, then return the count.",
+    signature="def count_above(nums, limit):",
+    function_name="count_above",
+    reference="""
+        def count_above(nums, limit):
+            count = 0
+            for n in nums:
+                if n > limit:
+                    count += 1
+            return count
+    """,
+    tests=[dict(args=[[1, 5, 8, 10], 5], expected=2), dict(args=[[], 3], expected=0),
+           dict(args=[[3, 3, 4], 3], expected=1)],
+    vocab=["count_above", "nums", "limit", "count"],
+    hints=["Start a counter at zero.", "Greater than, not greater than or equal."],
+    model_answer=("Define count above of nums and limit. count equals 0. For each n in nums, if n is greater than "
+                  "limit, add 1 to count. Return count."),
+)
+DRILLS += ladder(
+    "python", UNIT, 6, topics=["if", "elif"], difficulty=1, sketch_drive_ok=True,
+    task=("Write a function, size label, that takes a quantity and returns small if it's under 100, medium if "
+          "it's under 300, and large otherwise."),
+    plan_rubric=["check under 100 first, return small", "then under 300, return medium", "otherwise return large"],
+    plan_model="If the quantity is under 100 return small. Else if it's under 300 return medium. Otherwise return large.",
+    signature="def size_label(qty):",
+    function_name="size_label",
+    reference="""
+        def size_label(qty):
+            if qty < 100:
+                return "small"
+            elif qty < 300:
+                return "medium"
+            return "large"
+    """,
+    tests=[dict(args=[50], expected="small"), dict(args=[100], expected="medium"), dict(args=[299], expected="medium"),
+           dict(args=[300], expected="large")],
+    vocab=["size_label", "qty"],
+    hints=["Check the smallest range first.", "Use if, elif, and a final return."],
+    model_answer=("Define size label of qty. If qty is less than 100, return small. Else if qty is less than 300, "
+                  "return medium. Otherwise return large."),
+)

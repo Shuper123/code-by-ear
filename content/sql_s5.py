@@ -156,3 +156,27 @@ DRILLS = [
                              "then yes, else no. Or left join to cancelled orders and check for null."),
     ),
 ]
+
+# ---------- ladders ----------
+from _ladder import ladder  # noqa: E402
+
+DRILLS += ladder(
+    "sql", UNIT, 9, dataset="factory", topics=["subquery", "avg"], difficulty=2,
+    task="List the lot id and quantity of every lot above the average lot quantity.",
+    plan_rubric=["select lot id and qty from lots", "compare qty with a subquery", "the subquery takes the average qty"],
+    plan_model="Select lot id and quantity from lots where quantity is greater than a subquery that computes the average quantity.",
+    reference="SELECT lot_id, qty FROM lots WHERE qty > (SELECT AVG(qty) FROM lots);",
+    vocab=["lots", "lot_id", "qty"],
+    hints=["You need the average first.", "Put select average qty in a subquery."],
+    model_answer="Select lot id and qty from lots where qty is greater than the average qty from lots.",
+)
+DRILLS += ladder(
+    "sql", UNIT, 10, dataset="shop", topics=["case when"], difficulty=2,
+    task="For every order, show the order id and a label. Cancelled orders say cancelled, and all others say active.",
+    plan_rubric=["select order id from orders", "case when status is cancelled then cancelled", "else active"],
+    plan_model="Select order id and a case expression. When status is cancelled then cancelled, else active.",
+    reference="SELECT order_id, CASE WHEN status = 'cancelled' THEN 'cancelled' ELSE 'active' END FROM orders;",
+    vocab=["orders", "order_id", "status"],
+    hints=["Use case when.", "The else branch covers every other status."],
+    model_answer="Select order id and case when status is cancelled then cancelled, else active, end, from orders.",
+)

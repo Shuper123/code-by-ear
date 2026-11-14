@@ -290,5 +290,278 @@
     ],
     "hints_spoken": [],
     "model_answer_spoken": "Start a counter at zero. Loop over the counts. When a count is above 10, print alert and add 1 to the counter. After the loop, print the counter."
+  },
+  {
+    "id": "py-p3-plan-l005",
+    "lang": "python",
+    "unit": "P3",
+    "level": 1,
+    "type": "plan",
+    "ladder": "py-ladder-005",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "loops",
+      "counting"
+    ],
+    "prompt_spoken": "Plan this out loud. Write a function, count above, that takes a list of numbers and a limit, and returns how many numbers are greater than the limit.",
+    "rubric": [
+      "a counter starting at zero",
+      "loop over the numbers",
+      "add one when a number is greater than the limit",
+      "return the counter"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Start a count at zero. Loop over the numbers, add one whenever a number is greater than the limit, then return the count."
+  },
+  {
+    "id": "py-p3-sketch-005",
+    "lang": "python",
+    "unit": "P3",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "py-ladder-005",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "loops",
+      "counting"
+    ],
+    "prompt_spoken": "Write a function, count above, that takes a list of numbers and a limit, and returns how many numbers are greater than the limit.",
+    "reference": "def count_above(nums, limit):\n    count = 0\n    for n in nums:\n        if n > limit:\n            count += 1\n    return count",
+    "signature": "def count_above(nums, limit):",
+    "function_name": "count_above",
+    "tests": [
+      {
+        "args": [
+          [
+            1,
+            5,
+            8,
+            10
+          ],
+          5
+        ],
+        "expected": 2
+      },
+      {
+        "args": [
+          [],
+          3
+        ],
+        "expected": 0
+      },
+      {
+        "args": [
+          [
+            3,
+            3,
+            4
+          ],
+          3
+        ],
+        "expected": 1
+      }
+    ],
+    "vocab": [
+      "count_above",
+      "nums",
+      "limit",
+      "count"
+    ],
+    "hints_spoken": [
+      "Start a counter at zero.",
+      "Greater than, not greater than or equal."
+    ],
+    "model_answer_spoken": "Define count above of nums and limit. count equals 0. For each n in nums, if n is greater than limit, add 1 to count. Return count."
+  },
+  {
+    "id": "py-p3-dictate-005",
+    "lang": "python",
+    "unit": "P3",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "py-ladder-005",
+    "difficulty": 1,
+    "drive_ok": false,
+    "topics": [
+      "loops",
+      "counting"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. Write a function, count above, that takes a list of numbers and a limit, and returns how many numbers are greater than the limit.",
+    "reference": "def count_above(nums, limit):\n    count = 0\n    for n in nums:\n        if n > limit:\n            count += 1\n    return count",
+    "signature": "def count_above(nums, limit):",
+    "function_name": "count_above",
+    "tests": [
+      {
+        "args": [
+          [
+            1,
+            5,
+            8,
+            10
+          ],
+          5
+        ],
+        "expected": 2
+      },
+      {
+        "args": [
+          [],
+          3
+        ],
+        "expected": 0
+      },
+      {
+        "args": [
+          [
+            3,
+            3,
+            4
+          ],
+          3
+        ],
+        "expected": 1
+      }
+    ],
+    "vocab": [
+      "count_above",
+      "nums",
+      "limit",
+      "count"
+    ],
+    "hints_spoken": [
+      "Start a counter at zero.",
+      "Greater than, not greater than or equal."
+    ],
+    "model_answer_spoken": "Define count above of nums and limit. count equals 0. For each n in nums, if n is greater than limit, add 1 to count. Return count."
+  },
+  {
+    "id": "py-p3-plan-l006",
+    "lang": "python",
+    "unit": "P3",
+    "level": 1,
+    "type": "plan",
+    "ladder": "py-ladder-006",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "if",
+      "elif"
+    ],
+    "prompt_spoken": "Plan this out loud. Write a function, size label, that takes a quantity and returns small if it's under 100, medium if it's under 300, and large otherwise.",
+    "rubric": [
+      "check under 100 first, return small",
+      "then under 300, return medium",
+      "otherwise return large"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "If the quantity is under 100 return small. Else if it's under 300 return medium. Otherwise return large."
+  },
+  {
+    "id": "py-p3-sketch-006",
+    "lang": "python",
+    "unit": "P3",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "py-ladder-006",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "if",
+      "elif"
+    ],
+    "prompt_spoken": "Write a function, size label, that takes a quantity and returns small if it's under 100, medium if it's under 300, and large otherwise.",
+    "reference": "def size_label(qty):\n    if qty < 100:\n        return \"small\"\n    elif qty < 300:\n        return \"medium\"\n    return \"large\"",
+    "signature": "def size_label(qty):",
+    "function_name": "size_label",
+    "tests": [
+      {
+        "args": [
+          50
+        ],
+        "expected": "small"
+      },
+      {
+        "args": [
+          100
+        ],
+        "expected": "medium"
+      },
+      {
+        "args": [
+          299
+        ],
+        "expected": "medium"
+      },
+      {
+        "args": [
+          300
+        ],
+        "expected": "large"
+      }
+    ],
+    "vocab": [
+      "size_label",
+      "qty"
+    ],
+    "hints_spoken": [
+      "Check the smallest range first.",
+      "Use if, elif, and a final return."
+    ],
+    "model_answer_spoken": "Define size label of qty. If qty is less than 100, return small. Else if qty is less than 300, return medium. Otherwise return large."
+  },
+  {
+    "id": "py-p3-dictate-006",
+    "lang": "python",
+    "unit": "P3",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "py-ladder-006",
+    "difficulty": 1,
+    "drive_ok": false,
+    "topics": [
+      "if",
+      "elif"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. Write a function, size label, that takes a quantity and returns small if it's under 100, medium if it's under 300, and large otherwise.",
+    "reference": "def size_label(qty):\n    if qty < 100:\n        return \"small\"\n    elif qty < 300:\n        return \"medium\"\n    return \"large\"",
+    "signature": "def size_label(qty):",
+    "function_name": "size_label",
+    "tests": [
+      {
+        "args": [
+          50
+        ],
+        "expected": "small"
+      },
+      {
+        "args": [
+          100
+        ],
+        "expected": "medium"
+      },
+      {
+        "args": [
+          299
+        ],
+        "expected": "medium"
+      },
+      {
+        "args": [
+          300
+        ],
+        "expected": "large"
+      }
+    ],
+    "vocab": [
+      "size_label",
+      "qty"
+    ],
+    "hints_spoken": [
+      "Check the smallest range first.",
+      "Use if, elif, and a final return."
+    ],
+    "model_answer_spoken": "Define size label of qty. If qty is less than 100, return small. Else if qty is less than 300, return medium. Otherwise return large."
   }
 ]

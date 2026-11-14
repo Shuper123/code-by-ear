@@ -1,1 +1,98 @@
-{}
+{
+  "sql-s1-dictate-001": {
+    "hash": "5f37639348816220",
+    "rows": 4
+  },
+  "sql-s1-dictate-002": {
+    "hash": "43dddbdb419ca751",
+    "rows": 5
+  },
+  "sql-s1-sketch-001": {
+    "hash": "5f37639348816220",
+    "rows": 4
+  },
+  "sql-s1-sketch-002": {
+    "hash": "43dddbdb419ca751",
+    "rows": 5
+  },
+  "sql-s2-dictate-003": {
+    "hash": "d7ecd4197f50b6e4",
+    "rows": 6
+  },
+  "sql-s2-dictate-006": {
+    "hash": "5a603bed8175dd9b",
+    "rows": 17
+  },
+  "sql-s2-sketch-003": {
+    "hash": "d7ecd4197f50b6e4",
+    "rows": 6
+  },
+  "sql-s2-sketch-006": {
+    "hash": "5a603bed8175dd9b",
+    "rows": 17
+  },
+  "sql-s3-dictate-004": {
+    "hash": "f044c641fb7f148e",
+    "rows": 12
+  },
+  "sql-s3-dictate-005": {
+    "hash": "ebc4dd7e0f3d0a53",
+    "rows": 6
+  },
+  "sql-s3-sketch-004": {
+    "hash": "f044c641fb7f148e",
+    "rows": 12
+  },
+  "sql-s3-sketch-005": {
+    "hash": "ebc4dd7e0f3d0a53",
+    "rows": 6
+  },
+  "sql-s4-dictate-007": {
+    "hash": "c89eae1dc624c934",
+    "rows": 120
+  },
+  "sql-s4-dictate-008": {
+    "hash": "029674e08c23f686",
+    "rows": 6
+  },
+  "sql-s4-sketch-007": {
+    "hash": "c89eae1dc624c934",
+    "rows": 120
+  },
+  "sql-s4-sketch-008": {
+    "hash": "029674e08c23f686",
+    "rows": 6
+  },
+  "sql-s5-dictate-009": {
+    "hash": "6853c86a9e5c56a3",
+    "rows": 62
+  },
+  "sql-s5-dictate-010": {
+    "hash": "0ec62547de31946c",
+    "rows": 150
+  },
+  "sql-s5-sketch-009": {
+    "hash": "6853c86a9e5c56a3",
+    "rows": 62
+  },
+  "sql-s5-sketch-010": {
+    "hash": "0ec62547de31946c",
+    "rows": 150
+  },
+  "sql-s6-dictate-011": {
+    "hash": "9563c106119278fb",
+    "rows": 120
+  },
+  "sql-s6-dictate-012": {
+    "hash": "5b62ec9b9f7b5e95",
+    "rows": 120
+  },
+  "sql-s6-sketch-011": {
+    "hash": "9563c106119278fb",
+    "rows": 120
+  },
+  "sql-s6-sketch-012": {
+    "hash": "5b62ec9b9f7b5e95",
+    "rows": 120
+  }
+}

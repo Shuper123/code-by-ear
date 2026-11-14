@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { loadSettings } from '../settings'
 import { kvGet, kvSet } from '../storage/db'
+import { DrillsScreen } from './DrillsScreen'
 import { Home } from './Home'
 import { initNav, useRoute } from './nav'
 import { Notice } from './Notice'
@@ -40,10 +41,17 @@ export function App() {
       screen = <SettingsScreen />
       break
     case 'session':
-      screen = noticeAccepted ? <SessionScreen profile={route.params?.profile === 'drive' ? 'drive' : 'parked'} /> : <Home />
+      screen = noticeAccepted ? (
+        <SessionScreen profile={route.params?.profile === 'drive' ? 'drive' : 'parked'} drillId={route.params?.drill} />
+      ) : (
+        <Home />
+      )
       break
     case 'progress':
       screen = <ProgressScreen />
+      break
+    case 'drills':
+      screen = <DrillsScreen />
       break
     default:
       screen = <Home />

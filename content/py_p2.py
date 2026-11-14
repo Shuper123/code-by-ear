@@ -160,3 +160,41 @@ DRILLS = [
                              "take the first three items with a slice. A slice also works if there are fewer than three."),
     ),
 ]
+
+# ---------- ladders ----------
+from _ladder import ladder  # noqa: E402
+
+DRILLS += ladder(
+    "python", UNIT, 3, topics=["sorting", "slicing"], difficulty=1, sketch_drive_ok=True,
+    task="Write a function, top three, that takes a list of numbers and returns the three largest, biggest first.",
+    plan_rubric=["sort from largest to smallest", "take the first three with a slice", "return them"],
+    plan_model="Sort the numbers from largest to smallest and return the first three with a slice.",
+    signature="def top_three(nums):",
+    function_name="top_three",
+    reference="""
+        def top_three(nums):
+            return sorted(nums, reverse=True)[:3]
+    """,
+    tests=[dict(args=[[5, 1, 9, 7, 3]], expected=[9, 7, 5]), dict(args=[[2, 2, 1]], expected=[2, 2, 1]),
+           dict(args=[[4]], expected=[4])],
+    vocab=["top_three", "nums", "sorted", "reverse"],
+    hints=["sorted with reverse set to True sorts biggest first.", "A slice up to 3 keeps three items."],
+    model_answer="Define top three of nums. Return sorted of nums with reverse equals True, up to index 3.",
+)
+DRILLS += ladder(
+    "python", UNIT, 4, topics=["slicing"], difficulty=1, sketch_drive_ok=True,
+    task="Write a function, middle, that takes a list and returns it without its first and last items.",
+    plan_rubric=["slice the list", "start at index 1", "stop before the last item, negative 1"],
+    plan_model="Return a slice of the list from index 1 up to negative 1, which drops the first and last items.",
+    signature="def middle(items):",
+    function_name="middle",
+    reference="""
+        def middle(items):
+            return items[1:-1]
+    """,
+    tests=[dict(args=[[1, 2, 3, 4]], expected=[2, 3]), dict(args=[["a", "b", "c"]], expected=["b"]),
+           dict(args=[[1, 2]], expected=[])],
+    vocab=["middle", "items"],
+    hints=["Slicing can drop items from both ends.", "Start at 1, stop at negative 1."],
+    model_answer="Define middle of items. Return items from index 1 up to negative 1.",
+)

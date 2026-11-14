@@ -6,6 +6,7 @@ import { dueCount, idbStore } from '../engine/progress'
 import { languagesFor } from '../engine/queue'
 import { newDrillUnit } from '../engine/unlock'
 import { isStandalone, pwa } from '../pwa'
+import { warmPythonCache } from '../runtimes/py'
 import { useSettings } from '../settings'
 import { unlockAudio } from '../speech/cues'
 import { ttsSupported } from '../speech/tts'
@@ -63,6 +64,15 @@ export function Home() {
     })()
   }, [settings.languageMix])
 
+  // Python Sketch needs Pyodide (several megabytes): fetch it in the background so it's cached.
+  useEffect(() => {
+    if (!hasKey || settings.languageMix === 'sql') return
+    const saveData = (navigator as unknown as { connection?: { saveData?: boolean } }).connection?.saveData
+    if (saveData) return
+    const t = setTimeout(() => void warmPythonCache(), 5000)
+    return () => clearTimeout(t)
+  }, [hasKey, settings.languageMix])
+
   const mix = settings.languageMix === 'both' ? 'SQL and Python' : settings.languageMix === 'sql' ? 'SQL only' : 'Python only'
   return (
     <div class="page">
@@ -105,6 +115,9 @@ export function Home() {
       <div class="row" style={{ marginBottom: '14px' }}>
         <button class="btn" onClick={() => navigate('progress')}>
           Progress
+        </button>
+        <button class="btn" onClick={() => navigate('drills')}>
+          Drills
         </button>
         <button class="btn" onClick={() => navigate('settings')}>
           Settings

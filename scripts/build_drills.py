@@ -37,6 +37,8 @@ def dedent_code(s):
 
 
 def load(path):
+    if str(CONTENT) not in sys.path:
+        sys.path.insert(0, str(CONTENT))  # lets content files share helpers such as _ladder.py
     spec = importlib.util.spec_from_file_location(path.stem, path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)

@@ -285,5 +285,161 @@
     ],
     "hints_spoken": [],
     "model_answer_spoken": "Select shift and the count of rows from lots, where shift is not null, grouped by shift."
+  },
+  {
+    "id": "sql-s3-plan-l004",
+    "lang": "sql",
+    "unit": "S3",
+    "level": 1,
+    "type": "plan",
+    "ladder": "sql-ladder-004",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "group by",
+      "sum"
+    ],
+    "prompt_spoken": "Plan this out loud. Using the lots table, find the total quantity produced for each part.",
+    "rubric": [
+      "select part id and the sum of qty",
+      "from lots",
+      "group by part id"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Select part id and the sum of quantity from lots, grouped by part id, so there's one row per part."
+  },
+  {
+    "id": "sql-s3-sketch-004",
+    "lang": "sql",
+    "unit": "S3",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "sql-ladder-004",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "group by",
+      "sum"
+    ],
+    "prompt_spoken": "Using the lots table, find the total quantity produced for each part.",
+    "reference": "SELECT part_id, SUM(qty) AS total FROM lots GROUP BY part_id;",
+    "order_matters": false,
+    "vocab": [
+      "lots",
+      "part_id",
+      "qty"
+    ],
+    "hints_spoken": [
+      "You need one row per part.",
+      "Group by part id and add up quantity."
+    ],
+    "model_answer_spoken": "Select part id and the sum of quantity from lots, grouped by part id."
+  },
+  {
+    "id": "sql-s3-dictate-004",
+    "lang": "sql",
+    "unit": "S3",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "sql-ladder-004",
+    "difficulty": 2,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "group by",
+      "sum"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. Using the lots table, find the total quantity produced for each part.",
+    "reference": "SELECT part_id, SUM(qty) AS total FROM lots GROUP BY part_id;",
+    "order_matters": false,
+    "vocab": [
+      "lots",
+      "part_id",
+      "qty"
+    ],
+    "hints_spoken": [
+      "You need one row per part.",
+      "Group by part id and add up quantity."
+    ],
+    "model_answer_spoken": "Select part id and the sum of quantity from lots, grouped by part id."
+  },
+  {
+    "id": "sql-s3-plan-l005",
+    "lang": "sql",
+    "unit": "S3",
+    "level": 1,
+    "type": "plan",
+    "ladder": "sql-ladder-005",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "group by",
+      "having"
+    ],
+    "prompt_spoken": "Plan this out loud. For each defect code, count its defect records, and keep only codes with at least 20.",
+    "rubric": [
+      "select defect code and a count from defects",
+      "group by defect code",
+      "having count at least 20"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Select defect code and the count of rows from defects, group by defect code, then keep groups having a count of at least 20."
+  },
+  {
+    "id": "sql-s3-sketch-005",
+    "lang": "sql",
+    "unit": "S3",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "sql-ladder-005",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "group by",
+      "having"
+    ],
+    "prompt_spoken": "For each defect code, count its defect records, and keep only codes with at least 20.",
+    "reference": "SELECT defect_code, COUNT(*) FROM defects GROUP BY defect_code HAVING COUNT(*) >= 20;",
+    "order_matters": false,
+    "vocab": [
+      "defects",
+      "defect_code"
+    ],
+    "hints_spoken": [
+      "Group by defect code.",
+      "Filter the groups with having."
+    ],
+    "model_answer_spoken": "Select defect code and the count of rows from defects, grouped by defect code, having a count of at least 20."
+  },
+  {
+    "id": "sql-s3-dictate-005",
+    "lang": "sql",
+    "unit": "S3",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "sql-ladder-005",
+    "difficulty": 2,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "group by",
+      "having"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. For each defect code, count its defect records, and keep only codes with at least 20.",
+    "reference": "SELECT defect_code, COUNT(*) FROM defects GROUP BY defect_code HAVING COUNT(*) >= 20;",
+    "order_matters": false,
+    "vocab": [
+      "defects",
+      "defect_code"
+    ],
+    "hints_spoken": [
+      "Group by defect code.",
+      "Filter the groups with having."
+    ],
+    "model_answer_spoken": "Select defect code and the count of rows from defects, grouped by defect code, having a count of at least 20."
   }
 ]

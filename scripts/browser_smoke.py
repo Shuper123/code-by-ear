@@ -9,6 +9,7 @@ Needs: Python playwright and a Chrome binary.  Usage: python3 scripts/browser_sm
 Exit code 1 on console errors or failed checks.
 """
 import asyncio
+import json
 import os
 import subprocess
 import sys
@@ -77,6 +78,66 @@ FAKE_SPEECH = r"""
   window.webkitSpeechRecognition = FakeRecognition;
 })();
 """
+
+
+FAKE_KEY = "sk-ant-test-not-a-real-key"
+api_calls = []
+
+
+async def fake_anthropic(route):
+    """Stand-in for api.anthropic.com: checks the request shape and answers like the real API."""
+    req = route.request
+    cors = {"access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "POST, OPTIONS"}
+    if req.method == "OPTIONS":
+        await route.fulfill(status=204, headers=cors)
+        return
+    body = json.loads(req.post_data or "{}")
+    h = req.headers
+    ok_headers = (h.get("authorization") == f"Bearer {FAKE_KEY}" and h.get("anthropic-version") == "2026-10-21"
+                  and h.get("anthropic-dangerous-direct-browser-access") == "true" and "temperature" not in body)
+    system = body.get("system", [{}])[0].get("text", "")
+    user = body["messages"][0]["content"]
+    api_calls.append({"ok_headers": ok_headers, "system": system[:40]})
+    if not ok_headers:
+        await route.fulfill(status=400, headers=cors, json={"error": {"message": "bad request shape"}})
+        return
+    if system.startswith("Convert the learner"):
+        if "count_above" in user:
+            code = "def count_above(nums, limit):\n    count = 0\n    for n in nums:\n        if n > limit:\n            count += 1\n    return count\n"
+        else:
+            code = "SELECT part_id, SUM(qty) FROM lots GROUP BY part_id;"
+        text = json.dumps({"code": code, "assumptions": ["I took quantity to mean qty."], "unclear": []})
+    elif system.startswith("You grade"):
+        t = user.split("<transcript>")[1].lower()
+        bad = any(w in t for w in ["favorite color", "ignore all previous", "adds two numbers"])
+        text = json.dumps({"score": 0 if bad else 3, "verdict": "incorrect" if bad else "correct",
+                           "feedback_spoken": "Not quite." if bad else "Right, it builds and prints the full name.", "missed": []})
+    else:
+        text = json.dumps({"feedback_spoken": "Look at the grouping step."})
+    await route.fulfill(status=200, headers={**cors, "content-type": "application/json"},
+                        json={"content": [{"type": "text", "text": text}], "model": body["model"], "stop_reason": "end_turn"})
+
+
+async def set_kv(page, key, value):
+    await page.evaluate("""async ([k, v]) => {
+      const req = indexedDB.open('code-by-ear', 1);
+      await new Promise(r => req.onsuccess = r);
+      const tx = req.result.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(v, k);
+      await new Promise(r => tx.oncomplete = r);
+    }""", [key, value])
+
+
+async def practice(page, drill_id, script, wait_for, timeout_ms=60000):
+    await page.goto(URL, wait_until="networkidle")
+    await page.evaluate(f"window.__script = {script}")
+    await page.get_by_text("Drills", exact=True).first.click()
+    lang = "python" if drill_id.startswith("py-") else "sql"
+    await page.locator("select").first.select_option(lang)
+    await page.wait_for_timeout(200)
+    item = page.locator(".drill-item", has_text=drill_id)
+    await item.get_by_text("Practice").click()
+    await page.wait_for_function(f"window.__said.some(s => s.includes({json.dumps(wait_for)}))", timeout=timeout_ms)
 
 
 async def main():
@@ -158,6 +219,45 @@ async def main():
             await page.wait_for_timeout(1500)
             check(await page.get_by_text("Session over").count() >= 1 or await page.get_by_text("No drills").count() >= 1,
                   "ending a Drive session shows the recap")
+
+            # ---------- M2: AI grading and Sketch, with a fake Anthropic API and real sql.js / Pyodide ----------
+            await page.route("https://api.anthropic.com/**", fake_anthropic)
+            await page.goto(URL, wait_until="networkidle")
+            await set_kv(page, "apiKey", FAKE_KEY)
+            # the fake user waits at the read-back, so the converted code can be checked on screen
+            await practice(page, "sql-s3-sketch-004",
+                           "(last) => /Say go to run it/.test(last) ? (window.__hold ? null : 'go') : /Sketch\\./.test(last) ? "
+                           "'select part id and the sum of quantity from lots grouped by part id' : null",
+                           "Say go to run it")
+            await page.wait_for_timeout(300)
+            await page.screenshot(path=f"{OUT}/20-sql-sketch-readback.png", full_page=True)
+            check(await page.get_by_text("SELECT part_id, SUM(qty)").count() >= 1, "SQL Sketch: converted code shown in Parked")
+            await page.wait_for_function("window.__said.some(s => s.includes('Correct. Your rows match the answer.'))", timeout=60000)
+            check(True, "SQL Sketch ran end to end in sql.js and scored correct")
+            await practice(page, "py-p3-sketch-005",
+                           "(last) => /Say go to run it/.test(last) ? 'go' : /Sketch\\./.test(last) ? "
+                           "'count starts at zero, for each n in nums if n is greater than limit add one, return count' : null",
+                           "Correct. All the tests pass.", timeout_ms=120000)
+            await page.screenshot(path=f"{OUT}/21-py-sketch.png", full_page=True)
+            check(True, "Python Sketch ran end to end in Pyodide and scored correct")
+            await practice(page, "py-p1-explain-001",
+                           "(last) => /What does this code do/.test(last) ? 'it builds the full name and prints it' : null",
+                           "Right, it builds and prints the full name.")
+            check(True, "Explain drill got AI feedback")
+            check(all(c["ok_headers"] for c in api_calls), f"every API call used Bearer auth, version 2026-10-21, no temperature ({len(api_calls)} calls)")
+            # Settings self-test
+            await page.goto(URL, wait_until="networkidle")
+            await page.get_by_text("Settings", exact=True).first.click()
+            await page.get_by_text("Run AI self-test").click()
+            await page.wait_for_function("document.body.innerText.includes('6 of 6')", timeout=30000)
+            await page.screenshot(path=f"{OUT}/22-selftest.png", full_page=True)
+            check("6 of 6" in await page.inner_text("body"), "AI self-test reports 6 of 6 with the fake API")
+            # without a key: falls back cleanly
+            await set_kv(page, "apiKey", "")
+            await practice(page, "py-p1-explain-001",
+                           "(last) => /What does this code do/.test(last) ? 'it prints a name' : /Say yes, partly/.test(last) ? 'yes' : null",
+                           "Say yes, partly, no, or easy.")
+            check(True, "without a key, Explain falls back to self-rating")
             await browser.close()
     finally:
         srv.terminate()

@@ -172,3 +172,49 @@ DRILLS = [
                              "the uppercased name, a dash, and the line letter together. Then print or return it."),
     ),
 ]
+
+# ---------- ladders ----------
+from _ladder import ladder  # noqa: E402
+
+DRILLS += ladder(
+    "python", UNIT, 1, topics=["strings", "f-strings"], difficulty=1, sketch_drive_ok=True,
+    task=("Write a function, make label, that takes a part name and a line letter, and returns the name in "
+          "capitals, then a dash, then the line letter."),
+    plan_rubric=["a function with name and line parameters", "uppercase the name", "join name, dash and line",
+                 "return the result"],
+    plan_model="Define make label with name and line. Uppercase the name, put a dash and the line after it, and return that.",
+    signature="def make_label(name, line):",
+    function_name="make_label",
+    reference="""
+        def make_label(name, line):
+            return f"{name.upper()}-{line}"
+    """,
+    tests=[dict(args=["bracket", "A"], expected="BRACKET-A"), dict(args=["clip", "C"], expected="CLIP-C"),
+           dict(args=["Cover", "b"], expected="COVER-b")],
+    vocab=["make_label", "name", "line", "upper"],
+    hints=["name dot upper gives capitals.", "An f string can join the pieces."],
+    model_answer="Define make label of name and line. Return an f string with name dot upper, a dash, then line.",
+)
+DRILLS += ladder(
+    "python", UNIT, 2, topics=["strings", "split", "loops"], difficulty=2,
+    task=("Write a function, initials, that takes a full name and returns the first letter of each word in "
+          "capitals. For ana park it returns AP."),
+    plan_rubric=["split the name into words", "take the first letter of each word", "uppercase and join them",
+                 "return the result"],
+    plan_model="Split the full name into words. For each word take the first letter in capitals, add it to a result string, and return it.",
+    signature="def initials(full_name):",
+    function_name="initials",
+    reference="""
+        def initials(full_name):
+            result = ""
+            for word in full_name.split():
+                result += word[0].upper()
+            return result
+    """,
+    tests=[dict(args=["ana park"], expected="AP"), dict(args=["Ben Reyes"], expected="BR"),
+           dict(args=["cara jo stone"], expected="CJS")],
+    vocab=["initials", "full_name", "split", "upper", "result", "word"],
+    hints=["split gives you the words.", "word at index 0 is the first letter."],
+    model_answer=("Define initials of full name. Start result as an empty string. For each word in full name dot "
+                  "split, add word at index 0, uppercased, to result. Return result."),
+)

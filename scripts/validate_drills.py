@@ -385,7 +385,7 @@ def main():
         if l1[lang] < MIN_L1_PER_LANG:
             errors[f"({lang})"].append(f"only {l1[lang]} Level 1 drills (need at least {MIN_L1_PER_LANG})")
         if ladder_count[lang] < MIN_LADDERS_PER_LANG:
-            warnings[f"({lang})"].append(f"only {ladder_count[lang]} ladders (milestone 2 needs {MIN_LADDERS_PER_LANG})")
+            errors[f"({lang})"].append(f"only {ladder_count[lang]} ladders (need at least {MIN_LADDERS_PER_LANG})")
 
     # ---------- report ----------
     n_err = sum(len(v) for v in errors.values())

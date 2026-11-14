@@ -43,14 +43,28 @@ export interface EngineDeps {
   onRateChange?(profile: Profile, rate: number): void
   /** Drill types this build can run. */
   supportedTypes: ReadonlySet<string>
-  /** Optional extra handlers for Level 2 and 3 drills (added in later milestones). */
-  levelHandlers?: Partial<Record<string, (ctx: DrillContext) => Promise<void>>>
+  /** Per-type behavior for Level 2 and 3 drills (Sketch, Dictate). */
+  typeHooks?: Partial<Record<string, TypeHook>>
+}
+
+/** How a drill type plugs into the shared prompt, listen and command loop. */
+export interface TypeHook {
+  /** Runs once before the first prompt (for example, reading back the ladder's Plan notes). */
+  intro?(ctx: DrillContext): Promise<void>
+  /** Replaces the spoken prompt. */
+  promptText?(d: Drill): string
+  /** Thinking time before the prompt counts as unanswered. */
+  thinkMs?: number
+  /** Grade an answer; 'redo' sends the learner back to answering. */
+  grade(ctx: DrillContext, transcript: string): Promise<'done' | 'redo'>
 }
 
 export interface EngineConfig {
   profile: Profile
   settings: Settings
   drills: Drill[]
+  /** Practice exactly these drill ids (Drills browser). */
+  only?: string[]
 }
 
 export type Phase =
@@ -82,6 +96,8 @@ export interface EngineView {
   rate: number
   recap: string
   error: string
+  /** Extra things to show on the Parked screen (the converted code, the run result). */
+  detail: { code?: string; note?: string }
 }
 
 export class Interrupt extends Error {
@@ -101,6 +117,8 @@ export interface DrillContext {
   selfRate(transcript: string, preface: string): Promise<void>
   noteFor(ladder: string): Promise<string | undefined>
   saveNote(field: 'plan' | 'sketch' | 'dictate', text: string): Promise<void>
+  followUp(transcript: string): Promise<void>
+  show(detail: { code?: string; note?: string }): void
   profile: Profile
   signal: AbortSignal
 }
@@ -160,6 +178,7 @@ export class SessionEngine {
       rate: this.rate,
       recap: '',
       error: '',
+      detail: {},
     }
   }
 
@@ -417,6 +436,7 @@ export class SessionEngine {
       today,
       seed: Math.floor(this.deps.now() / 86400000),
       supportedTypes: this.deps.supportedTypes,
+      only: this.cfg.only,
     })
     this.startedAt = this.deps.now()
     this.lastTick = this.startedAt
@@ -455,6 +475,10 @@ export class SessionEngine {
   }
 
   private async intro() {
+    if (this.cfg.only) {
+      await this.say(this.cfg.only.length === 1 ? 'One drill.' : `${this.cfg.only.length} drills.`)
+      return
+    }
     const langs = languagesFor(this.cfg.settings.languageMix)
     const what = langs.length === 2 ? 'SQL and Python' : langs[0] === 'sql' ? 'SQL' : 'Python'
     const text =
@@ -465,6 +489,8 @@ export class SessionEngine {
   }
 
   private context(drill: Drill, hintsRef: { n: number }): DrillContext {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const self = this
     return {
       drill,
       get hints() {
@@ -477,28 +503,36 @@ export class SessionEngine {
       selfRate: (transcript, preface) => this.selfRate(drill, transcript, hintsRef.n, preface),
       noteFor: async (ladder) => (await this.deps.store.getNote(ladder))?.plan,
       saveNote: (field, text) => (drill.ladder ? this.deps.store.saveNote(drill.ladder, field, text) : Promise.resolve()),
+      followUp: (transcript) => this.followUp(drill, transcript),
+      show: (detail) => this.update({ detail: { ...this.view.detail, ...detail } }),
       profile: this.cfg.profile,
-      signal: this.ctrl.signal,
+      get signal() {
+        return self.ctrl.signal
+      },
     }
   }
 
   private async runDrill(item: QueueItem) {
     const d = item.drill
     this.queue.markSeen(d.id)
-    this.update({ drill: d, reason: item.reason, heard: '', lastAnswer: '' })
+    this.update({ drill: d, reason: item.reason, heard: '', lastAnswer: '', detail: {} })
     const hints = { n: 0 }
+    const hook = this.deps.typeHooks?.[d.type]
+    const ctx = this.context(d, hints)
+    let introDone = false
     let skipPrompt = false
     let missed = 0
     for (;;) {
       try {
-        const handler = this.deps.levelHandlers?.[d.type]
-        if (handler) {
-          await handler(this.context(d, hints))
-          return
+        if (!skipPrompt) {
+          if (hook?.intro && !introDone) {
+            introDone = true
+            await hook.intro(ctx)
+          }
+          await this.speakPrompt(d, hook?.promptText?.(d))
         }
-        if (!skipPrompt) await this.speakPrompt(d)
         skipPrompt = false
-        const r = await this.hear(ANSWER_COMMANDS)
+        const r = await this.hear(ANSWER_COMMANDS, { thinkMs: hook?.thinkMs })
         if (r.error) {
           await this.handleSttError(r.error)
           continue
@@ -551,6 +585,14 @@ export class SessionEngine {
         this.consecutiveUnanswered = 0
         this.update({ lastAnswer: r.text })
         await this.cue('gotIt')
+        if (hook) {
+          this.update({ phase: 'grading' })
+          if ((await hook.grade(ctx, r.text)) === 'redo') {
+            skipPrompt = true
+            continue
+          }
+          return
+        }
         await this.gradeAndFeedback(d, r.text, hints.n)
         return
       } catch (e) {
@@ -580,13 +622,16 @@ export class SessionEngine {
     throw new Interrupt('stop')
   }
 
-  private async speakPrompt(d: Drill) {
+  private async speakPrompt(d: Drill, override?: string) {
     const parts: string[] = []
     if (this.lastLang !== d.lang) parts.push(d.lang === 'sql' ? 'SQL.' : 'Python.')
     this.lastLang = d.lang
-    if (d.type === 'spot_bug') parts.push('Spot the bug.')
-    if (d.code_spoken) parts.push(d.code_spoken)
-    parts.push(d.prompt_spoken)
+    if (override) parts.push(override)
+    else {
+      if (d.type === 'spot_bug') parts.push('Spot the bug.')
+      if (d.code_spoken) parts.push(d.code_spoken)
+      parts.push(d.prompt_spoken)
+    }
     await this.say(parts.join(' '))
   }
 

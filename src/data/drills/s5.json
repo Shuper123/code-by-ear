@@ -265,5 +265,160 @@
     ],
     "hints_spoken": [],
     "model_answer_spoken": "Select name from customers, plus a case when exists a cancelled order for that customer, then yes, else no. Or left join to cancelled orders and check for null."
+  },
+  {
+    "id": "sql-s5-plan-l009",
+    "lang": "sql",
+    "unit": "S5",
+    "level": 1,
+    "type": "plan",
+    "ladder": "sql-ladder-009",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "subquery",
+      "avg"
+    ],
+    "prompt_spoken": "Plan this out loud. List the lot id and quantity of every lot above the average lot quantity.",
+    "rubric": [
+      "select lot id and qty from lots",
+      "compare qty with a subquery",
+      "the subquery takes the average qty"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Select lot id and quantity from lots where quantity is greater than a subquery that computes the average quantity."
+  },
+  {
+    "id": "sql-s5-sketch-009",
+    "lang": "sql",
+    "unit": "S5",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "sql-ladder-009",
+    "difficulty": 2,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "subquery",
+      "avg"
+    ],
+    "prompt_spoken": "List the lot id and quantity of every lot above the average lot quantity.",
+    "reference": "SELECT lot_id, qty FROM lots WHERE qty > (SELECT AVG(qty) FROM lots);",
+    "order_matters": false,
+    "vocab": [
+      "lots",
+      "lot_id",
+      "qty"
+    ],
+    "hints_spoken": [
+      "You need the average first.",
+      "Put select average qty in a subquery."
+    ],
+    "model_answer_spoken": "Select lot id and qty from lots where qty is greater than the average qty from lots."
+  },
+  {
+    "id": "sql-s5-dictate-009",
+    "lang": "sql",
+    "unit": "S5",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "sql-ladder-009",
+    "difficulty": 2,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "subquery",
+      "avg"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. List the lot id and quantity of every lot above the average lot quantity.",
+    "reference": "SELECT lot_id, qty FROM lots WHERE qty > (SELECT AVG(qty) FROM lots);",
+    "order_matters": false,
+    "vocab": [
+      "lots",
+      "lot_id",
+      "qty"
+    ],
+    "hints_spoken": [
+      "You need the average first.",
+      "Put select average qty in a subquery."
+    ],
+    "model_answer_spoken": "Select lot id and qty from lots where qty is greater than the average qty from lots."
+  },
+  {
+    "id": "sql-s5-plan-l010",
+    "lang": "sql",
+    "unit": "S5",
+    "level": 1,
+    "type": "plan",
+    "ladder": "sql-ladder-010",
+    "difficulty": 2,
+    "drive_ok": true,
+    "dataset": "shop",
+    "topics": [
+      "case when"
+    ],
+    "prompt_spoken": "Plan this out loud. For every order, show the order id and a label. Cancelled orders say cancelled, and all others say active.",
+    "rubric": [
+      "select order id from orders",
+      "case when status is cancelled then cancelled",
+      "else active"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Select order id and a case expression. When status is cancelled then cancelled, else active."
+  },
+  {
+    "id": "sql-s5-sketch-010",
+    "lang": "sql",
+    "unit": "S5",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "sql-ladder-010",
+    "difficulty": 2,
+    "drive_ok": false,
+    "dataset": "shop",
+    "topics": [
+      "case when"
+    ],
+    "prompt_spoken": "For every order, show the order id and a label. Cancelled orders say cancelled, and all others say active.",
+    "reference": "SELECT order_id, CASE WHEN status = 'cancelled' THEN 'cancelled' ELSE 'active' END FROM orders;",
+    "order_matters": false,
+    "vocab": [
+      "orders",
+      "order_id",
+      "status"
+    ],
+    "hints_spoken": [
+      "Use case when.",
+      "The else branch covers every other status."
+    ],
+    "model_answer_spoken": "Select order id and case when status is cancelled then cancelled, else active, end, from orders."
+  },
+  {
+    "id": "sql-s5-dictate-010",
+    "lang": "sql",
+    "unit": "S5",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "sql-ladder-010",
+    "difficulty": 2,
+    "drive_ok": false,
+    "dataset": "shop",
+    "topics": [
+      "case when"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. For every order, show the order id and a label. Cancelled orders say cancelled, and all others say active.",
+    "reference": "SELECT order_id, CASE WHEN status = 'cancelled' THEN 'cancelled' ELSE 'active' END FROM orders;",
+    "order_matters": false,
+    "vocab": [
+      "orders",
+      "order_id",
+      "status"
+    ],
+    "hints_spoken": [
+      "Use case when.",
+      "The else branch covers every other status."
+    ],
+    "model_answer_spoken": "Select order id and case when status is cancelled then cancelled, else active, end, from orders."
   }
 ]

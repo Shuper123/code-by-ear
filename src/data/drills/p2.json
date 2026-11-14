@@ -288,5 +288,316 @@
     ],
     "hints_spoken": [],
     "model_answer_spoken": "Sort the list from largest to smallest, for example sorted with reverse set to true, then take the first three items with a slice. A slice also works if there are fewer than three."
+  },
+  {
+    "id": "py-p2-plan-l003",
+    "lang": "python",
+    "unit": "P2",
+    "level": 1,
+    "type": "plan",
+    "ladder": "py-ladder-003",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "sorting",
+      "slicing"
+    ],
+    "prompt_spoken": "Plan this out loud. Write a function, top three, that takes a list of numbers and returns the three largest, biggest first.",
+    "rubric": [
+      "sort from largest to smallest",
+      "take the first three with a slice",
+      "return them"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Sort the numbers from largest to smallest and return the first three with a slice."
+  },
+  {
+    "id": "py-p2-sketch-003",
+    "lang": "python",
+    "unit": "P2",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "py-ladder-003",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "sorting",
+      "slicing"
+    ],
+    "prompt_spoken": "Write a function, top three, that takes a list of numbers and returns the three largest, biggest first.",
+    "reference": "def top_three(nums):\n    return sorted(nums, reverse=True)[:3]",
+    "signature": "def top_three(nums):",
+    "function_name": "top_three",
+    "tests": [
+      {
+        "args": [
+          [
+            5,
+            1,
+            9,
+            7,
+            3
+          ]
+        ],
+        "expected": [
+          9,
+          7,
+          5
+        ]
+      },
+      {
+        "args": [
+          [
+            2,
+            2,
+            1
+          ]
+        ],
+        "expected": [
+          2,
+          2,
+          1
+        ]
+      },
+      {
+        "args": [
+          [
+            4
+          ]
+        ],
+        "expected": [
+          4
+        ]
+      }
+    ],
+    "vocab": [
+      "top_three",
+      "nums",
+      "sorted",
+      "reverse"
+    ],
+    "hints_spoken": [
+      "sorted with reverse set to True sorts biggest first.",
+      "A slice up to 3 keeps three items."
+    ],
+    "model_answer_spoken": "Define top three of nums. Return sorted of nums with reverse equals True, up to index 3."
+  },
+  {
+    "id": "py-p2-dictate-003",
+    "lang": "python",
+    "unit": "P2",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "py-ladder-003",
+    "difficulty": 1,
+    "drive_ok": false,
+    "topics": [
+      "sorting",
+      "slicing"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. Write a function, top three, that takes a list of numbers and returns the three largest, biggest first.",
+    "reference": "def top_three(nums):\n    return sorted(nums, reverse=True)[:3]",
+    "signature": "def top_three(nums):",
+    "function_name": "top_three",
+    "tests": [
+      {
+        "args": [
+          [
+            5,
+            1,
+            9,
+            7,
+            3
+          ]
+        ],
+        "expected": [
+          9,
+          7,
+          5
+        ]
+      },
+      {
+        "args": [
+          [
+            2,
+            2,
+            1
+          ]
+        ],
+        "expected": [
+          2,
+          2,
+          1
+        ]
+      },
+      {
+        "args": [
+          [
+            4
+          ]
+        ],
+        "expected": [
+          4
+        ]
+      }
+    ],
+    "vocab": [
+      "top_three",
+      "nums",
+      "sorted",
+      "reverse"
+    ],
+    "hints_spoken": [
+      "sorted with reverse set to True sorts biggest first.",
+      "A slice up to 3 keeps three items."
+    ],
+    "model_answer_spoken": "Define top three of nums. Return sorted of nums with reverse equals True, up to index 3."
+  },
+  {
+    "id": "py-p2-plan-l004",
+    "lang": "python",
+    "unit": "P2",
+    "level": 1,
+    "type": "plan",
+    "ladder": "py-ladder-004",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "slicing"
+    ],
+    "prompt_spoken": "Plan this out loud. Write a function, middle, that takes a list and returns it without its first and last items.",
+    "rubric": [
+      "slice the list",
+      "start at index 1",
+      "stop before the last item, negative 1"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Return a slice of the list from index 1 up to negative 1, which drops the first and last items."
+  },
+  {
+    "id": "py-p2-sketch-004",
+    "lang": "python",
+    "unit": "P2",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "py-ladder-004",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "slicing"
+    ],
+    "prompt_spoken": "Write a function, middle, that takes a list and returns it without its first and last items.",
+    "reference": "def middle(items):\n    return items[1:-1]",
+    "signature": "def middle(items):",
+    "function_name": "middle",
+    "tests": [
+      {
+        "args": [
+          [
+            1,
+            2,
+            3,
+            4
+          ]
+        ],
+        "expected": [
+          2,
+          3
+        ]
+      },
+      {
+        "args": [
+          [
+            "a",
+            "b",
+            "c"
+          ]
+        ],
+        "expected": [
+          "b"
+        ]
+      },
+      {
+        "args": [
+          [
+            1,
+            2
+          ]
+        ],
+        "expected": []
+      }
+    ],
+    "vocab": [
+      "middle",
+      "items"
+    ],
+    "hints_spoken": [
+      "Slicing can drop items from both ends.",
+      "Start at 1, stop at negative 1."
+    ],
+    "model_answer_spoken": "Define middle of items. Return items from index 1 up to negative 1."
+  },
+  {
+    "id": "py-p2-dictate-004",
+    "lang": "python",
+    "unit": "P2",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "py-ladder-004",
+    "difficulty": 1,
+    "drive_ok": false,
+    "topics": [
+      "slicing"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. Write a function, middle, that takes a list and returns it without its first and last items.",
+    "reference": "def middle(items):\n    return items[1:-1]",
+    "signature": "def middle(items):",
+    "function_name": "middle",
+    "tests": [
+      {
+        "args": [
+          [
+            1,
+            2,
+            3,
+            4
+          ]
+        ],
+        "expected": [
+          2,
+          3
+        ]
+      },
+      {
+        "args": [
+          [
+            "a",
+            "b",
+            "c"
+          ]
+        ],
+        "expected": [
+          "b"
+        ]
+      },
+      {
+        "args": [
+          [
+            1,
+            2
+          ]
+        ],
+        "expected": []
+      }
+    ],
+    "vocab": [
+      "middle",
+      "items"
+    ],
+    "hints_spoken": [
+      "Slicing can drop items from both ends.",
+      "Start at 1, stop at negative 1."
+    ],
+    "model_answer_spoken": "Define middle of items. Return items from index 1 up to negative 1."
   }
 ]

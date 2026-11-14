@@ -4,7 +4,7 @@
 - Spec: "Code by Ear: Build Plan" doc, https://claude.ai/artifact/CzQVMPkJ4s1w8pv6QvThSM (sections are numbered in
   order: 3 Decisions, 5 Sessions, 6 Grading, 7 Learning engine, 8 Content, 9 Verbal Syntax, 12 Safety and privacy,
   13 Milestones, 14 Testing)
-- Last updated: 2026-11-14, milestone 1 deployed
+- Last updated: 2026-11-14, milestone 2 deployed
 
 ## Milestones
 
@@ -12,9 +12,9 @@
 | --- | --- | --- |
 | M0 Skeleton, deploy, voice spikes | Deployed, waiting for phone test | "Voice check" on Home |
 | M1 Level 1 for both languages | Deployed, waiting for phone test | 144 Level 1 drills, Drive and Parked sessions |
-| M2 AI grading and Sketch | Not started | |
+| M2 AI grading and Sketch | Deployed, waiting for phone test | AI grading, Sketch for SQL and Python, 24 ladders |
 | M3 Verbal Syntax and Dictate | Not started | |
-| M4 Polish | Not started | Basic Progress screen already exists |
+| M4 Polish | Not started | Basic Progress screen and Drills browser already exist |
 
 ## What works
 
@@ -51,6 +51,27 @@ M1
   speech restart loop, API client, simulated 20-minute Drive session, auto-pause, commands, two-day persistence).
   `scripts/browser_smoke.py` runs the built app in headless Chrome with fake speech (11 checks, all passing).
 
+M2
+- AI client and the four prompts (`src/ai/prompts.ts`): grader, Sketch converter, error explainer, explain more.
+  Strict JSON, one retry on invalid JSON, then fallback. System prompts are marked for prompt caching.
+- AI grading for Level 1: Predict answers that don't match exactly, Explain, Spot the bug, Plan and Concept get a
+  0 to 3 score and short spoken feedback. After a partial score, a short follow-up window takes "answer",
+  "explain more" or "read it back".
+- Sketch (Level 2), SQL and Python (`src/engine/sketch.ts`): speak a solution, the AI converts it literally, the
+  app reads back what it heard plus any assumptions, then "go" runs it or "redo" re-listens. SQL runs in a sql.js
+  worker and compares rows with the reference; Python runs hidden tests in a Pyodide worker with a 3-second kill.
+  Failures get a plain-words explanation. Without a key, Sketch is offered as a Plan with self-rating.
+- 24 ladders (12 SQL, 12 Python), each Plan, Sketch and Dictate (Dictate plays from M3). 216 drills in total,
+  all validated (`reports/validation.md`).
+- Settings: "Run AI self-test" (6 canned answers including an off-topic answer and a prompt injection),
+  "Run converter check" (20 spoken Sketch answers; 16 buggy ones must stay buggy, 4 correct ones must pass),
+  "Load Python now". Pyodide (about 12 MB) also downloads in the background from Home once a key is set.
+- Drills browser (Home, Drills): practice any drill in a Parked session, which is the quickest way to try Sketch.
+- Tests: 244 unit tests, including AI contract tests with mocked replies, simulated Sketch sessions using real
+  sql.js and Pyodide in Node, and cross-engine checks (sql.js returns the same rows hash as Python's SQLite for all
+  24 SQL references; Pyodide passes all 12 Python references). The browser smoke test now also runs SQL and
+  Python Sketch end to end in headless Chrome with a fake Anthropic API (19 checks, all passing).
+
 ## What to test on the phone
 
 1. M0 list: install from Chrome, run the voice loop and the long-answer test in Voice check, at home and in the car.
@@ -60,14 +81,26 @@ M1
 4. Start Parked: code and your transcript appear on screen; say "stop session" to end and hear the recap.
 5. Close the app and reopen: Progress should still show your answers and due counts.
 6. Paste the Voice check report (Copy report) into the build chat, plus anything that misbehaved.
+7. M2: create an Anthropic key scoped to one workspace with a low monthly spend limit, paste it in Settings on the
+   phone, then tap "Run AI self-test" (expect 6 of 6, each in a few seconds) and "Run converter check" (expect 20
+   of 20; any failure names the bug the converter fixed or kept).
+8. Drills, SQL, S3 Aggregates, Sketch "find the total quantity produced for each part": Practice, say the query in
+   words, then "go". Then Python, P3, Sketch "count above" (the first Python run downloads about 12 MB).
+9. A Parked Explain drill with the key: feedback should arrive in about 4 seconds. Remove the key: the same drill
+   falls back to self-rating.
 
 ## Known issues and open questions
 
 - Not yet verified on a real phone: Android restart chimes, gap length between recognizer runs, Bluetooth hands-free
   mic switching (spec section 16 risks). If restart chimes are bad while paused, turn off Settings, Listening,
   "While paused, keep listening for continue" and tap to resume instead.
-- Without AI grading (M2), Predict answers that don't match the expected output exactly fall back to self-rating,
-  and Explain, Plan, Concept and Spot-the-bug answers are always self-rated.
+- Live AI quality (scores, and whether the converter stays literal) can only be checked with a real key: that is
+  what the two Settings checks are for. Automated tests use mocked replies.
+- Sketch read-back repeats the transcript and assumptions, not the converted code (Parked shows the code).
+- In sessions, a ladder's Sketch opens only after its unit's Level 1 average reaches 2.0 over 10 attempts and the
+  ladder's Plan scored 2 or more; use Drills to try Sketch sooner. Dictate steps exist but play from M3.
+- Spec gap: Dictate opens after Sketch passes, but without a key Sketch is a self-rated Plan. A self-rated 2 or
+  more on that Plan counts as a pass so Dictate doesn't stay locked forever without a key.
 - The headless test browser has no real voices or microphone; speech was tested with fakes only.
 
 ## Decisions and deviations from the spec
@@ -84,6 +117,10 @@ M1
   not commands while answering, because they are also Python answers.
 - **Thinking time.** A prompt counts as unanswered after 15 seconds with no words (Settings, Listening). The spec's
   4 s and 2.5 s silence windows apply once you've started talking.
+- **Sketch scoring.** Pass is 3 (2 with hints). SQL with wrong rows is 1; a query error is 0. Python with at least
+  half the tests passing is 1, otherwise 0, and a 0 plays the model answer. At the read-back, silence after one
+  reminder runs the code.
+- **Row comparison** also accepts the right columns in a different order (spec says ignore column names).
 - **SQL Predict drills** state the facts they need ("Lots 1 to 5 have quantities ...") and run against the real
   factory data, or use plain expressions. Some ask for a row count (`answer_kind: "row_count"`).
 - **Level 2 opens** after at least 10 Level 1 attempts in the unit averaging 2.0 or more.
@@ -94,7 +131,11 @@ M1
 ## How to work on this repo
 
 - `npm ci`; `npm run dev`; `npm test`; `npm run validate` (builds drills from `content/`, then runs them all);
-  `npm run build`; `npm run smoke` (needs Python playwright and Chrome); `npm run datasets` (regenerate data).
+  `npm run build`; `npm run smoke` (needs Python playwright and Chrome; run after `npm run build`);
+  `npm run datasets` (regenerate data).
+- Ladders: `content/_ladder.py` builds Plan, Sketch and Dictate from one problem; each unit file appends its two.
+- Runtimes: `scripts/copy_runtimes.mjs` copies sql.js wasm and the Pyodide core into `public/runtimes/` at build
+  time (served from the app's own origin; Pyodide is runtime-cached by the service worker, not precached).
 - Adding drills: edit `content/<lang>_<unit>.py`, run `npm run validate`, fix every error, commit the generated JSON
   and `reports/validation.md` together with the source.
 - Deploy: commit everything (including this file), then `npm run deploy`. The script validates drills, runs unit
@@ -108,6 +149,8 @@ M1
 
 ## Next steps
 
-- M2: Anthropic client prompts (grader, Sketch converter, error explainer, hint), AI grading for Level 1, Sketch
-  with sql.js row comparison and a Pyodide worker with tests and a 3-second kill, assumption read-back, at least
-  12 ladders per language, "Run AI self-test" in Settings, AI contract tests.
+- M3 (Parked only): Verbal Syntax parser pipeline from spec section 9 (normalize, longest phrase match, vocabulary
+  fuzzy match, emit with indentation, format, syntax check), edit commands (scratch that, delete line, go to line,
+  read it back, read line, run it, start over), read-back, at least 60 unit tests including both worked examples,
+  then a `dictate` type hook in `src/engine/` like `sketch.ts`, and add 'dictate' to SUPPORTED_TYPES.
+- M4: export and import, polish Progress and Drills, Media Session API spike.

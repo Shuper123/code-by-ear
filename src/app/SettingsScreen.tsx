@@ -3,6 +3,7 @@ import { describeAiError, sendMessage } from '../ai/anthropic'
 import { getApiKey, MODELS, resetSettings, setApiKey, updateSettings, useSettings, type Settings } from '../settings'
 import { chooseVoice, speak, waitForVoices } from '../speech/tts'
 import { buildLabel } from '../version'
+import { AiChecks } from './AiChecks'
 import { goBack } from './nav'
 
 function NumberField(props: {
@@ -150,6 +151,8 @@ export function SettingsScreen() {
           </label>
         </div>
       </div>
+
+      <AiChecks />
 
       <div class="card">
         <h2>Voice</h2>

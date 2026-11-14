@@ -291,5 +291,165 @@
     ],
     "hints_spoken": [],
     "model_answer_spoken": "Select part name and unit cost from parts, keep rows where line is B, order by unit cost descending, and limit to 5."
+  },
+  {
+    "id": "sql-s1-plan-l001",
+    "lang": "sql",
+    "unit": "S1",
+    "level": 1,
+    "type": "plan",
+    "ladder": "sql-ladder-001",
+    "difficulty": 1,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "where",
+      "order by"
+    ],
+    "prompt_spoken": "Plan this out loud. List the part name and unit cost of every part on line A, most expensive first.",
+    "rubric": [
+      "select part name and unit cost from parts",
+      "keep only line A",
+      "order by unit cost, descending"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Select the name and cost from parts, keep only line A, and sort by cost from highest to lowest."
+  },
+  {
+    "id": "sql-s1-sketch-001",
+    "lang": "sql",
+    "unit": "S1",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "sql-ladder-001",
+    "difficulty": 1,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "where",
+      "order by"
+    ],
+    "prompt_spoken": "List the part name and unit cost of every part on line A, most expensive first.",
+    "reference": "SELECT part_name, unit_cost FROM parts WHERE line = 'A' ORDER BY unit_cost DESC;",
+    "order_matters": true,
+    "vocab": [
+      "parts",
+      "part_name",
+      "unit_cost",
+      "line"
+    ],
+    "hints_spoken": [
+      "Filter on line A.",
+      "Sort by unit cost, descending."
+    ],
+    "model_answer_spoken": "Select part name and unit cost from parts where line is A, order by unit cost descending."
+  },
+  {
+    "id": "sql-s1-dictate-001",
+    "lang": "sql",
+    "unit": "S1",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "sql-ladder-001",
+    "difficulty": 1,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "where",
+      "order by"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. List the part name and unit cost of every part on line A, most expensive first.",
+    "reference": "SELECT part_name, unit_cost FROM parts WHERE line = 'A' ORDER BY unit_cost DESC;",
+    "order_matters": true,
+    "vocab": [
+      "parts",
+      "part_name",
+      "unit_cost",
+      "line"
+    ],
+    "hints_spoken": [
+      "Filter on line A.",
+      "Sort by unit cost, descending."
+    ],
+    "model_answer_spoken": "Select part name and unit cost from parts where line is A, order by unit cost descending."
+  },
+  {
+    "id": "sql-s1-plan-l002",
+    "lang": "sql",
+    "unit": "S1",
+    "level": 1,
+    "type": "plan",
+    "ladder": "sql-ladder-002",
+    "difficulty": 1,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "order by",
+      "limit"
+    ],
+    "prompt_spoken": "Plan this out loud. Show the lot id and quantity of the five largest lots.",
+    "rubric": [
+      "select lot id and qty from lots",
+      "order by qty descending",
+      "limit 5"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Select lot id and quantity from lots, sort by quantity from largest down, and keep the first five."
+  },
+  {
+    "id": "sql-s1-sketch-002",
+    "lang": "sql",
+    "unit": "S1",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "sql-ladder-002",
+    "difficulty": 1,
+    "drive_ok": true,
+    "dataset": "factory",
+    "topics": [
+      "order by",
+      "limit"
+    ],
+    "prompt_spoken": "Show the lot id and quantity of the five largest lots.",
+    "reference": "SELECT lot_id, qty FROM lots ORDER BY qty DESC LIMIT 5;",
+    "order_matters": false,
+    "vocab": [
+      "lots",
+      "lot_id",
+      "qty"
+    ],
+    "hints_spoken": [
+      "Sort from the largest quantity down.",
+      "Then keep only five rows."
+    ],
+    "model_answer_spoken": "Select lot id and qty from lots, order by qty descending, limit 5."
+  },
+  {
+    "id": "sql-s1-dictate-002",
+    "lang": "sql",
+    "unit": "S1",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "sql-ladder-002",
+    "difficulty": 1,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "order by",
+      "limit"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. Show the lot id and quantity of the five largest lots.",
+    "reference": "SELECT lot_id, qty FROM lots ORDER BY qty DESC LIMIT 5;",
+    "order_matters": false,
+    "vocab": [
+      "lots",
+      "lot_id",
+      "qty"
+    ],
+    "hints_spoken": [
+      "Sort from the largest quantity down.",
+      "Then keep only five rows."
+    ],
+    "model_answer_spoken": "Select lot id and qty from lots, order by qty descending, limit 5."
   }
 ]

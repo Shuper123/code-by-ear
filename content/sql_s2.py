@@ -151,3 +151,27 @@ DRILLS = [
                              "and March 31st, 2026."),
     ),
 ]
+
+# ---------- ladders ----------
+from _ladder import ladder  # noqa: E402
+
+DRILLS += ladder(
+    "sql", UNIT, 3, dataset="factory", topics=["null"], difficulty=1, sketch_drive_ok=True,
+    task="Find the lot ids that have no shift recorded.",
+    plan_rubric=["select lot id from lots", "filter where shift is null", "use is null, not equals null"],
+    plan_model="Select lot id from lots where shift is null. Equals null would match nothing.",
+    reference="SELECT lot_id FROM lots WHERE shift IS NULL;",
+    vocab=["lots", "lot_id", "shift"],
+    hints=["Missing values are null.", "Use is null."],
+    model_answer="Select lot id from lots where shift is null.",
+)
+DRILLS += ladder(
+    "sql", UNIT, 6, dataset="shop", topics=["in"], difficulty=1, sketch_drive_ok=True,
+    task="List the names of customers who live in Riverton or Lakeside.",
+    plan_rubric=["select name from customers", "filter city in Riverton or Lakeside", "in, or two conditions joined by or"],
+    plan_model="Select name from customers where city is in Riverton or Lakeside.",
+    reference="SELECT name FROM customers WHERE city IN ('Riverton', 'Lakeside');",
+    vocab=["customers", "name", "city"],
+    hints=["Filter on the city column.", "In takes a list of values."],
+    model_answer="Select name from customers where city is in Riverton or Lakeside.",
+)

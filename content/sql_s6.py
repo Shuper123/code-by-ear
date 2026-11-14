@@ -168,3 +168,29 @@ DRILLS = [
                              "produced on, and subtract it from qty to get the change."),
     ),
 ]
+
+# ---------- ladders ----------
+from _ladder import ladder  # noqa: E402
+
+DRILLS += ladder(
+    "sql", UNIT, 11, dataset="factory", topics=["row_number", "partition by"], difficulty=3,
+    task=("For every lot, show the lot id, the part id, and the lot's number within its part, counting in lot "
+          "id order."),
+    plan_rubric=["select lot id and part id from lots", "row number over partition by part id",
+                 "order by lot id inside over"],
+    plan_model="Select lot id, part id, and row number over a window partitioned by part id and ordered by lot id.",
+    reference="SELECT lot_id, part_id, ROW_NUMBER() OVER (PARTITION BY part_id ORDER BY lot_id) FROM lots;",
+    vocab=["lots", "lot_id", "part_id"],
+    hints=["Row number restarts for each partition.", "Partition by part id, order by lot id."],
+    model_answer="Select lot id, part id, and row number over partition by part id order by lot id, from lots.",
+)
+DRILLS += ladder(
+    "sql", UNIT, 12, dataset="factory", topics=["running total", "sum over"], difficulty=2,
+    task="Show each lot id, its quantity, and a running total of quantity in lot id order.",
+    plan_rubric=["select lot id and qty from lots", "sum of qty over order by lot id", "no group by needed"],
+    plan_model="Select lot id, quantity, and the sum of quantity over a window ordered by lot id.",
+    reference="SELECT lot_id, qty, SUM(qty) OVER (ORDER BY lot_id) FROM lots;",
+    vocab=["lots", "lot_id", "qty"],
+    hints=["A running total is a sum over a window.", "Order the window by lot id."],
+    model_answer="Select lot id, qty, and the sum of qty over order by lot id, from lots.",
+)

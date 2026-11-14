@@ -25,6 +25,8 @@ export interface QueueInput {
   seed: number
   /** Drill types the app can run in this build. */
   supportedTypes: ReadonlySet<string>
+  /** Practice exactly these drills (from the Drills browser), in this order, with no top-ups. */
+  only?: string[]
 }
 
 export function languagesFor(mix: QueueInput['languageMix']): Lang[] {
@@ -62,6 +64,15 @@ export class SessionQueue {
   }
 
   private build() {
+    if (this.input.only) {
+      const byId = new Map(this.input.drills.map((d) => [d.id, d]))
+      for (const id of this.input.only) {
+        const d = byId.get(id)
+        if (d && this.input.supportedTypes.has(d.type)) this.items.push({ drill: d, reason: this.seen.has(id) ? 'review' : 'new' })
+      }
+      for (const it of this.items) this.used.add(it.drill.id)
+      return
+    }
     const { states, today, newPerSession, seed } = this.input
     const perLang = new Map<Lang, QueueItem[]>()
     // split new drills between languages; the odd one alternates by day
@@ -129,6 +140,7 @@ export class SessionQueue {
   }
 
   private topUp(): QueueItem | null {
+    if (this.input.only) return null
     // more new drills, alternating languages in blocks of three
     for (let tries = 0; tries < this.langs.length; tries++) {
       const lang = this.langs[(this.topUpTurn + tries) % this.langs.length]

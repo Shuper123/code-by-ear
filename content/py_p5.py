@@ -177,3 +177,47 @@ DRILLS = [
                              "with the largest count, for example max with the counts as the key."),
     ),
 ]
+
+# ---------- ladders ----------
+from _ladder import ladder  # noqa: E402
+
+DRILLS += ladder(
+    "python", UNIT, 9, topics=["dictionaries", "counting"], difficulty=2,
+    task=("Write a function, count words, that takes a list of words and returns a dictionary mapping each word to "
+          "how many times it appears."),
+    plan_rubric=["start an empty dictionary", "loop over the words", "add one to the word's count, starting at zero",
+                 "return the dictionary"],
+    plan_model="Start an empty dictionary. For each word, set its count to the old count, or zero, plus one. Return the dictionary.",
+    signature="def count_words(words):",
+    function_name="count_words",
+    reference="""
+        def count_words(words):
+            counts = {}
+            for w in words:
+                counts[w] = counts.get(w, 0) + 1
+            return counts
+    """,
+    tests=[dict(args=[["pin", "cap", "pin"]], expected={"pin": 2, "cap": 1}), dict(args=[[]], expected={}),
+           dict(args=[["a"]], expected={"a": 1})],
+    vocab=["count_words", "words", "counts", "get"],
+    hints=["get with a default of 0 handles new words."],
+    model_answer=("Define count words of words. counts equals an empty dictionary. For each w in words, counts at "
+                  "w equals counts dot get of w with default 0, plus 1. Return counts."),
+)
+DRILLS += ladder(
+    "python", UNIT, 10, topics=["sets", "intersection"], difficulty=2,
+    task="Write a function, common, that takes two lists and returns a sorted list of the values that appear in both.",
+    plan_rubric=["turn both lists into sets", "intersect them", "sort the result into a list", "return it"],
+    plan_model="Make a set from each list, take their intersection, sort it, and return the sorted list.",
+    signature="def common(a, b):",
+    function_name="common",
+    reference="""
+        def common(a, b):
+            return sorted(set(a) & set(b))
+    """,
+    tests=[dict(args=[[1, 2, 3], [2, 3, 4]], expected=[2, 3]), dict(args=[[1], [2]], expected=[]),
+           dict(args=[[3, 1, 3], [3]], expected=[3])],
+    vocab=["common", "a", "b", "set", "sorted"],
+    hints=["Sets have an intersection.", "sorted turns a set into a sorted list."],
+    model_answer="Define common of a and b. Return sorted of set of a intersect set of b.",
+)

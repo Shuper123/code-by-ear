@@ -5,7 +5,7 @@ import { ALL_DRILLS } from '../data/drills'
 import { LEVEL_NAMES, UNIT_NAMES } from '../data/types'
 import { localDate } from '../engine/dates'
 import { idbStore } from '../engine/progress'
-import { SessionEngine, type AiGrader, type EngineDeps, type EngineView } from '../engine/session'
+import { SessionEngine, type EngineDeps, type EngineView } from '../engine/session'
 import { holdWakeLock, releaseWakeLock } from '../platform/wakelock'
 import { getSettings, updateSettings } from '../settings'
 import type { Command } from '../speech/commands'
@@ -13,16 +13,21 @@ import { playCue } from '../speech/cues'
 import { listen } from '../speech/stt'
 import { speak, stopSpeaking } from '../speech/tts'
 import type { Profile } from '../storage/db'
+import { AiServices } from '../ai/services'
+import { makeSketchHook, type Runners } from '../engine/sketch'
+import { loadPython, pythonState, runPythonTests } from '../runtimes/py'
+import { runSql } from '../runtimes/sql'
 import { goBack, navigate } from './nav'
 
-export const SUPPORTED_TYPES = new Set(['predict', 'explain', 'spot_bug', 'plan', 'concept'])
+/** Drill types this build can run in sessions. */
+export const SUPPORTED_TYPES: ReadonlySet<string> = new Set(['predict', 'explain', 'spot_bug', 'plan', 'concept', 'sketch'])
 
-/** Hooks for later milestones to plug in AI grading and Level 2 and 3 handlers. */
-export const sessionExtensions: {
-  grader?: () => AiGrader | undefined
-  levelHandlers?: () => EngineDeps['levelHandlers']
-  supportedTypes?: () => Set<string>
-} = {}
+export const runners: Runners = {
+  runSql: (dataset, sql) => runSql(dataset, sql),
+  runPyTests: (code, fn, tests) => runPythonTests(code, fn, tests),
+  pythonReady: () => pythonState() === 'ready',
+  preloadPython: () => void loadPython().catch(() => {}),
+}
 
 const TYPE_LABEL: Record<string, string> = {
   predict: 'Predict',
@@ -59,7 +64,7 @@ function phaseLabel(v: EngineView): string {
   }
 }
 
-export function SessionScreen({ profile }: { profile: Profile }) {
+export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?: string }) {
   const [view, setView] = useState<EngineView | null>(null)
   const [now, setNow] = useState(Date.now())
   const engineRef = useRef<SessionEngine | null>(null)
@@ -67,6 +72,7 @@ export function SessionScreen({ profile }: { profile: Profile }) {
 
   useEffect(() => {
     const s = getSettings()
+    const ai = new AiServices()
     const deps: EngineDeps = {
       speak: (text, rate, signal) => speak(text, { rate, voiceURI: s.voiceURI }, signal),
       stopSpeaking,
@@ -75,12 +81,15 @@ export function SessionScreen({ profile }: { profile: Profile }) {
       now: () => Date.now(),
       today: () => localDate(),
       store: idbStore,
-      grader: sessionExtensions.grader?.(),
-      levelHandlers: sessionExtensions.levelHandlers?.(),
+      grader: ai,
+      typeHooks: { sketch: makeSketchHook(ai, runners) },
       onRateChange: (p, rate) => void updateSettings(p === 'drive' ? { rateDrive: rate } : { rateParked: rate }),
-      supportedTypes: sessionExtensions.supportedTypes?.() ?? SUPPORTED_TYPES,
+      supportedTypes: SUPPORTED_TYPES,
     }
-    const engine = new SessionEngine({ profile, settings: s, drills: ALL_DRILLS }, deps)
+    const engine = new SessionEngine(
+      { profile, settings: s, drills: ALL_DRILLS, only: drillId ? [drillId] : undefined },
+      deps,
+    )
     engineRef.current = engine
     startRef.current = Date.now()
     const unsub = engine.subscribe(setView)
@@ -100,7 +109,7 @@ export function SessionScreen({ profile }: { profile: Profile }) {
       stopSpeaking()
       void releaseWakeLock()
     }
-  }, [profile])
+  }, [profile, drillId])
 
   const engine = engineRef.current
   if (!view || !engine) return <div class="drive">Starting…</div>
@@ -200,6 +209,16 @@ export function SessionScreen({ profile }: { profile: Profile }) {
       <div class="card">
         <div class="step">You</div>
         <div class="transcript">{view.phase === 'listening' ? view.heard || '…' : view.lastAnswer || view.heard || '…'}</div>
+        {view.phase === 'listening' && /Say go to run it, or redo\.$/.test(view.said) && (
+          <div class="row" style={{ marginTop: '10px' }}>
+            <button class="btn primary" onClick={() => cmd('go')}>
+              Go
+            </button>
+            <button class="btn" onClick={() => cmd('redo')}>
+              Redo
+            </button>
+          </div>
+        )}
         <div class="row" style={{ marginTop: '10px' }}>
           <button class="btn teal" disabled={view.phase !== 'listening'} onClick={() => engine.finishAnswer()}>
             Done talking
@@ -218,6 +237,15 @@ export function SessionScreen({ profile }: { profile: Profile }) {
           </button>
         </div>
       </div>
+      {view.detail.code && (
+        <div class="card">
+          <div class="step">Your code, converted</div>
+          <div class="code" style={{ marginTop: '8px' }}>
+            {view.detail.code}
+          </div>
+          {view.detail.note && <p class="small">{view.detail.note}</p>}
+        </div>
+      )}
       <div class="card">
         <div class="step">App</div>
         <p>{view.said}</p>

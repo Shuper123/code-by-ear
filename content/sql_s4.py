@@ -182,3 +182,31 @@ DRILLS = [
                              "defect code to get the description."),
     ),
 ]
+
+# ---------- ladders ----------
+from _ladder import ladder  # noqa: E402
+
+DRILLS += ladder(
+    "sql", UNIT, 7, dataset="factory", topics=["inner join"], difficulty=2, sketch_drive_ok=True,
+    task="List each lot id with the name of its part.",
+    plan_rubric=["from lots", "join parts on part id", "select lot id and part name"],
+    plan_model="Start from lots, join parts on matching part id, and select the lot id and the part name.",
+    reference="SELECT l.lot_id, p.part_name FROM lots l JOIN parts p ON p.part_id = l.part_id;",
+    vocab=["lots", "parts", "lot_id", "part_id", "part_name"],
+    hints=["The two tables share part id.", "Join parts to lots on part id."],
+    model_answer="Select lot id and part name from lots joined to parts on part id.",
+)
+DRILLS += ladder(
+    "sql", UNIT, 8, dataset="factory", topics=["left join", "count"], difficulty=3,
+    task="List every machine id with the number of lots it made, including machines with none.",
+    plan_rubric=["start from machines", "left join lots on machine id", "count lot id, not star, so empty machines get 0",
+                 "group by machine id"],
+    plan_model=("Start from machines, left join lots on machine id, count the lot ids so a machine with no lots "
+                "gets zero, and group by machine id."),
+    reference=("SELECT m.machine_id, COUNT(l.lot_id) FROM machines m "
+               "LEFT JOIN lots l ON l.machine_id = m.machine_id GROUP BY m.machine_id;"),
+    vocab=["machines", "lots", "machine_id", "lot_id"],
+    hints=["A left join keeps machines with no lots.", "Count lot id so missing lots count as zero."],
+    model_answer=("Select machine id and the count of lot id from machines, left join lots on machine id, grouped "
+                  "by machine id."),
+)

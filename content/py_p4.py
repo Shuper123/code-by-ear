@@ -184,3 +184,45 @@ DRILLS = [
                              "Loop over the quantities and add one when a quantity is above the threshold. Return the count."),
     ),
 ]
+
+# ---------- ladders ----------
+from _ladder import ladder  # noqa: E402
+
+DRILLS += ladder(
+    "python", UNIT, 7, topics=["functions", "guard clause"], difficulty=1, sketch_drive_ok=True,
+    task="Write a function, scrap rate, that returns defects divided by produced, or 0 when produced is 0.",
+    plan_rubric=["check produced is 0 first", "return 0 in that case", "otherwise return defects divided by produced"],
+    plan_model="If produced is zero return zero, so nothing divides by zero. Otherwise return defects divided by produced.",
+    signature="def scrap_rate(defects, produced):",
+    function_name="scrap_rate",
+    reference="""
+        def scrap_rate(defects, produced):
+            if produced == 0:
+                return 0
+            return defects / produced
+    """,
+    tests=[dict(args=[5, 20], expected=0.25), dict(args=[0, 10], expected=0.0), dict(args=[3, 0], expected=0)],
+    vocab=["scrap_rate", "defects", "produced"],
+    hints=["Guard against dividing by zero first."],
+    model_answer=("Define scrap rate of defects and produced. If produced is equal to 0, return 0. Return defects "
+                  "divided by produced."),
+)
+DRILLS += ladder(
+    "python", UNIT, 8, topics=["functions", "empty input"], difficulty=1, sketch_drive_ok=True,
+    task="Write a function, average, that returns the average of a list of numbers, or 0 for an empty list.",
+    plan_rubric=["check for an empty list first and return 0", "otherwise sum the numbers",
+                 "divide by how many there are", "return it"],
+    plan_model="If the list is empty return zero. Otherwise return the sum divided by the length.",
+    signature="def average(nums):",
+    function_name="average",
+    reference="""
+        def average(nums):
+            if not nums:
+                return 0
+            return sum(nums) / len(nums)
+    """,
+    tests=[dict(args=[[2, 4, 6]], expected=4.0), dict(args=[[]], expected=0), dict(args=[[5]], expected=5.0)],
+    vocab=["average", "nums", "sum", "len"],
+    hints=["What should an empty list give?", "sum divided by len."],
+    model_answer="Define average of nums. If not nums, return 0. Return sum of nums divided by len of nums.",
+)

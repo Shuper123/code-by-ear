@@ -149,3 +149,27 @@ DRILLS = [
         model_answer_spoken="Select shift and the count of rows from lots, where shift is not null, grouped by shift.",
     ),
 ]
+
+# ---------- ladders ----------
+from _ladder import ladder  # noqa: E402
+
+DRILLS += ladder(
+    "sql", UNIT, 4, dataset="factory", topics=["group by", "sum"], difficulty=2, sketch_drive_ok=True,
+    task="Using the lots table, find the total quantity produced for each part.",
+    plan_rubric=["select part id and the sum of qty", "from lots", "group by part id"],
+    plan_model="Select part id and the sum of quantity from lots, grouped by part id, so there's one row per part.",
+    reference="SELECT part_id, SUM(qty) AS total FROM lots GROUP BY part_id;",
+    vocab=["lots", "part_id", "qty"],
+    hints=["You need one row per part.", "Group by part id and add up quantity."],
+    model_answer="Select part id and the sum of quantity from lots, grouped by part id.",
+)
+DRILLS += ladder(
+    "sql", UNIT, 5, dataset="factory", topics=["group by", "having"], difficulty=2, sketch_drive_ok=True,
+    task="For each defect code, count its defect records, and keep only codes with at least 20.",
+    plan_rubric=["select defect code and a count from defects", "group by defect code", "having count at least 20"],
+    plan_model="Select defect code and the count of rows from defects, group by defect code, then keep groups having a count of at least 20.",
+    reference="SELECT defect_code, COUNT(*) FROM defects GROUP BY defect_code HAVING COUNT(*) >= 20;",
+    vocab=["defects", "defect_code"],
+    hints=["Group by defect code.", "Filter the groups with having."],
+    model_answer="Select defect code and the count of rows from defects, grouped by defect code, having a count of at least 20.",
+)

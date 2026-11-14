@@ -229,6 +229,17 @@ export function SettingsScreen() {
             <span class="faint">Turn off if the phone chimes too often while paused; then tap to resume.</span>
           </span>
         </label>
+        <label class="check">
+          <input type="checkbox" checked={s.mediaButtons} onChange={(e) => set({ mediaButtons: (e.target as HTMLInputElement).checked })} />
+          <span>
+            Headset and steering-wheel buttons (experimental)
+            <br />
+            <span class="faint">
+              Play/pause pauses or resumes, next skips, previous repeats. Plays a silent track during sessions so the
+              phone sends the buttons here. Try it first with the button test in Voice check.
+            </span>
+          </span>
+        </label>
         <details>
           <summary class="muted small">Recognizer options (for testing)</summary>
           <label class="check">

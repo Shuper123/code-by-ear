@@ -1,11 +1,14 @@
-// Progress: mastery by unit and level (average of the last 10 scores), plus due counts.
+// Progress: mastery by unit and level (average of the last 10 scores), due counts, streak, ladders,
+// recent sessions, and backup (export and import).
 import { useEffect, useState } from 'preact/hooks'
 import { ALL_DRILLS } from '../data/drills'
 import { LEVEL_NAMES, UNIT_NAMES, UNITS, type Lang } from '../data/types'
 import { addDays, localDate } from '../engine/dates'
 import { dueCount, idbStore, mastery } from '../engine/progress'
+import { ladderProgress, practiceStreak, recentSummary, totalMinutes, weakestUnits, type LadderRow } from '../engine/stats'
 import type { Attempt, DrillState, SessionRecord } from '../storage/db'
 import { db } from '../storage/db'
+import { BackupCard } from './BackupCard'
 import { goBack } from './nav'
 
 interface Data {
@@ -16,6 +19,43 @@ interface Data {
 
 function fmt(avg: number | null): string {
   return avg === null ? '–' : avg.toFixed(1)
+}
+
+function hours(min: number): string {
+  return min < 60 ? `${min} min` : `${(min / 60).toFixed(1)} hours`
+}
+
+function StepCell({ score }: { score: number | null }) {
+  return <td class={score === null ? 'muted' : `score-${score}`}>{score === null ? '–' : score}</td>
+}
+
+function LadderTable({ rows }: { rows: LadderRow[] }) {
+  return (
+    <table class="unit-table">
+      <thead>
+        <tr>
+          <th>Problem</th>
+          <th>Plan</th>
+          <th>Sketch</th>
+          <th>Dictate</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.id}>
+            <td>
+              <span class="ladder-title">
+                <span class="faint">{r.unit}</span> {r.isFunction ? <code>{r.title}</code> : r.title}
+              </span>
+            </td>
+            <StepCell score={r.plan} />
+            <StepCell score={r.sketch} />
+            <StepCell score={r.dictate} />
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
 }
 
 export function ProgressScreen() {
@@ -33,6 +73,11 @@ export function ProgressScreen() {
 
   if (!data) return <div class="page muted">Loading…</div>
   const today = localDate()
+  const streak = practiceStreak(data.attempts, today)
+  const week = recentSummary(data.attempts, today, 7)
+  const weak = weakestUnits(data.attempts, [...UNITS.sql, ...UNITS.python])
+  const ladderRows = ladderProgress(ALL_DRILLS, data.attempts)
+  const laddersStarted = ladderRows.filter((r) => r.plan !== null || r.sketch !== null || r.dictate !== null).length
   const levels = [1, 2, 3]
   const table = (lang: Lang) => (
     <table class="unit-table">
@@ -79,9 +124,20 @@ export function ProgressScreen() {
       <div class="card">
         <p>
           <strong>{dueCount(data.states, ALL_DRILLS, today)}</strong> due today ·{' '}
-          <strong>{dueCount(data.states, ALL_DRILLS, addDays(today, 1))}</strong> by tomorrow · {data.attempts.length} answers
-          in {data.sessions.length} sessions
+          <strong>{dueCount(data.states, ALL_DRILLS, addDays(today, 1))}</strong> by tomorrow
         </p>
+        <p>
+          Streak: <strong>{streak}</strong> {streak === 1 ? 'day' : 'days'} · Last 7 days: <strong>{week.n}</strong> answers
+          {week.avg !== null && <>, average {week.avg.toFixed(1)}</>}
+        </p>
+        <p class="muted">
+          All time: {data.attempts.length} answers in {data.sessions.length} sessions, {hours(totalMinutes(data.sessions))}
+        </p>
+        {weak.length > 0 && (
+          <p>
+            Needs work: {weak.map((w, i) => `${i ? ', ' : ''}${w.unit} ${UNIT_NAMES[w.unit]} ${w.avg.toFixed(1)}`).join('')}
+          </p>
+        )}
         <p class="faint">Mastery is the average of your last 10 scores per unit and level, out of 3.</p>
       </div>
       <div class="card">
@@ -91,6 +147,17 @@ export function ProgressScreen() {
       <div class="card">
         <h2>Python</h2>
         {table('python')}
+      </div>
+      <div class="card">
+        <h2>Ladders</h2>
+        <p class="faint">
+          Best score on each step, out of 3. {laddersStarted} of {ladderRows.length} started. Sketch opens after a Plan of
+          2 or more and a Level 1 unit average of 2.0; Dictate (Parked only) after Sketch passes. Drills plays any step now.
+        </p>
+        <h3>SQL</h3>
+        <LadderTable rows={ladderRows.filter((r) => r.lang === 'sql')} />
+        <h3>Python</h3>
+        <LadderTable rows={ladderRows.filter((r) => r.lang === 'python')} />
       </div>
       {data.sessions.length > 0 && (
         <div class="card">
@@ -110,6 +177,7 @@ export function ProgressScreen() {
           ))}
         </div>
       )}
+      <BackupCard />
     </div>
   )
 }

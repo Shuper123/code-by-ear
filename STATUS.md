@@ -4,7 +4,7 @@
 - Spec: "Code by Ear: Build Plan" doc, https://claude.ai/artifact/CzQVMPkJ4s1w8pv6QvThSM (sections are numbered in
   order: 3 Decisions, 5 Sessions, 6 Grading, 7 Learning engine, 8 Content, 9 Verbal Syntax, 12 Safety and privacy,
   13 Milestones, 14 Testing)
-- Last updated: 2026-11-14, milestone 3 deployed
+- Last updated: 2026-11-14, milestone 4 deployed (all milestones built; waiting for the on-phone checklist)
 
 ## Milestones
 
@@ -14,7 +14,7 @@
 | M1 Level 1 for both languages | Deployed, waiting for phone test | 144 Level 1 drills, Drive and Parked sessions |
 | M2 AI grading and Sketch | Deployed, waiting for phone test | AI grading, Sketch for SQL and Python, 24 ladders |
 | M3 Verbal Syntax and Dictate | Deployed, waiting for phone test | Parser, edit commands, read-back, Dictate in Parked; 26 ladders |
-| M4 Polish | Not started | Basic Progress screen and Drills browser already exist |
+| M4 Polish | Deployed, waiting for phone test | Progress, Drills browser, export and import, media buttons spike |
 
 ## What works
 
@@ -93,6 +93,24 @@ M3
   (multi-utterance, fix-and-rerun, edit commands, silence, both worked examples). The browser smoke test dictates
   both worked examples in headless Chrome and checks the code on screen (all checks passing).
 
+M4
+- Export and import (`src/storage/backup.ts`, Progress, Backup): one JSON file with progress, notes, sessions and
+  settings. The API key is never written to a backup, a key inside a hand-edited file is dropped, and importing keeps
+  the key already on the phone. The file is checked before anything changes, the confirm step says what it holds,
+  and the import replaces everything in one transaction (all or nothing), then restarts the app. "Share backup"
+  uses the Android share sheet (for example, to save it to Drive).
+- Progress: due today and tomorrow, streak, last 7 days, all-time answers and time, the two weakest units, mastery
+  by unit and level, a ladder table (best Plan, Sketch and Dictate score for all 26 problems), recent sessions.
+- Drills browser: filter by language, unit, type and status (new, due, last score 0 or 1, seen), search by words,
+  topic or ID; tap a drill to see its code; filters stay put when you come back from a practice session.
+- Media Session spike (`src/platform/mediaButtons.ts`): Settings, Listening, "Headset and steering-wheel buttons
+  (experimental)", off by default. When on, a silent track loops during sessions so Android sends media buttons to
+  the app: play/pause pauses or resumes, next skips, previous repeats. Voice check has a button test (card 6) that
+  says and logs which buttons arrive; the copied report includes the log.
+- Tests: 390 unit tests (backup round trip and key handling, damaged files, progress stats, media buttons with a
+  fake MediaSession). The browser smoke test exports a backup, wipes progress, imports it, checks the key stayed,
+  checks the Drills search and filters, and presses fake media buttons in a session (36 checks, all passing).
+
 ## What to test on the phone
 
 1. M0 list: install from Chrome, run the voice loop and the long-answer test in Voice check, at home and in the car.
@@ -116,6 +134,13 @@ M3
     off a colon on purpose: "run it" should tell you it doesn't parse yet and let you fix it, not grade it.
 12. Note any word the recognizer keeps mishearing (for example "colon" or "paren"); the YOU box shows exactly what
     it heard. Those become aliases in the parser.
+13. M4: Progress, Backup, Export progress (a file lands in Downloads). Then Import progress, pick that file, check
+    the summary, Replace my progress. Progress should look the same, and Settings should still show your key.
+14. Voice check, card 6, Start button test: press play/pause, next and previous on a Bluetooth headset and on the
+    steering wheel, with the app in front and then with the voice loop running. Copy the report into the chat.
+15. If the buttons arrive, turn on Settings, Listening, "Headset and steering-wheel buttons" and try a Drive
+    session: one press should pause, another should resume. Note whether speech or recognition got worse.
+16. The full on-phone checklist in spec section 14 is the M4 done-criterion.
 
 ## Known issues and open questions
 
@@ -131,6 +156,9 @@ M3
   "colon", "paren" and "def" is the main unknown; keywords are not fuzzy-matched yet (names are).
 - Dictate grades only when you say "run it", so a long silence pauses the session (after one reminder) rather
   than scoring a 0.
+- Media buttons are a spike: whether Android routes car buttons to a web app, and whether the silent track fights
+  speech recognition or text-to-speech for audio focus, is only knowable on the phone. With it on, the car display
+  may show "Code by Ear" as now playing. It stays off by default until the button test says it works.
 - Spec gap: Dictate opens after Sketch passes, but without a key Sketch is a self-rated Plan. A self-rated 2 or
   more on that Plan counts as a pass so Dictate doesn't stay locked forever without a key.
 - The headless test browser has no real voices or microphone; speech was tested with fakes only.
@@ -164,6 +192,11 @@ M3
 - **Dictate edits:** "done" also means run it. Fixable errors (syntax, unknown column or table, undefined name)
   don't count as an attempt; you fix and re-run. Test failures and wrong rows are graded like Sketch.
 - **Worked examples as drills:** added ladder 13 in P3 and S3 so the M3 done-criterion can be run from Drills.
+- **Import replaces, it doesn't merge.** A backup restores the phone to that moment. The API key is excluded from
+  exports and untouched by imports (spec section 12 lists the key with the stored data; leaving it out of the file
+  keeps it from spreading with a backup).
+- **Media buttons:** play, pause and stop all toggle pause by the session's own state (speech can pause the silent
+  track behind the app's back); next track and seek forward skip; previous track and seek back repeat.
 - Toolchain pinned to well-known majors: Vite 7.3, Preact 10.29, TypeScript 5.9, Vitest 3.2, vite-plugin-pwa 1.3, idb 8.
 - Recognizer defaults: `continuous = false` (one phrase per run, restarted by the app), restart delay 120 ms. Both
   are adjustable in Settings, Listening, Recognizer options.
@@ -190,7 +223,8 @@ M3
 
 ## Next steps
 
-- After Joshua's phone test of M3: add aliases for words the recognizer mishears; consider fuzzy matching for
-  keywords if mishearings are common.
-- M4: export and import (progress JSON, never the API key), polish Progress and Drills, Media Session API spike
-  for headset or steering-wheel buttons.
+- Run the on-phone checklist (spec section 14) and paste the Voice check report, including the button test, into
+  the build chat.
+- From those results: add aliases for words the recognizer mishears (consider fuzzy matching for keywords), tune
+  silence windows and restart delay, and decide whether media buttons stay experimental, become the default, or go.
+- Still open in spec section 3: whether to release publicly after the two-week test (Joshua's call).

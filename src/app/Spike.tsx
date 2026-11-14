@@ -15,6 +15,7 @@ import {
 import { chooseVoice, speak, stopSpeaking, ttsSupported, waitForVoices } from '../speech/tts'
 import { holdWakeLock, onWakeLockChange, releaseWakeLock, wakeLockState, wakeLockSupported } from '../platform/wakelock'
 import { buildLabel } from '../version'
+import { ButtonTest, buttonReportLines } from './ButtonTest'
 import { goBack } from './nav'
 
 const SAMPLE = {
@@ -253,6 +254,8 @@ export function Spike() {
       `Voice loop: ${loopResult || 'not run'}`,
       `Long answer: ${longStats ? JSON.stringify(longStats) : 'not run'}`,
       `AI call: ${ai || 'not run'} · key saved: ${hasKey}`,
+      `Buttons setting: ${s.mediaButtons}`,
+      ...buttonReportLines(),
       '--- event log (ms since screen opened) ---',
       ...logRef.current.map((l) => `+${l.t} ${l.ev}${l.detail ? ` ${l.detail}` : ''}`),
     ].join('\n')
@@ -398,6 +401,8 @@ export function Spike() {
         </button>
         {ai && <p class="small">{ai}</p>}
       </div>
+
+      <ButtonTest />
 
       <div class="card">
         <h2>Diagnostics</h2>

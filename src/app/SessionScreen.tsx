@@ -6,6 +6,7 @@ import { LEVEL_NAMES, UNIT_NAMES } from '../data/types'
 import { localDate } from '../engine/dates'
 import { idbStore } from '../engine/progress'
 import { SessionEngine, type EngineDeps, type EngineView } from '../engine/session'
+import { mediaButtons } from '../platform/mediaButtons'
 import { holdWakeLock, releaseWakeLock } from '../platform/wakelock'
 import { getSettings, updateSettings } from '../settings'
 import type { Command } from '../speech/commands'
@@ -95,6 +96,23 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
     engineRef.current = engine
     startRef.current = Date.now()
     const unsub = engine.subscribe(setView)
+    let unsubButtons = () => {}
+    if (s.mediaButtons) {
+      void mediaButtons.start(
+        {
+          togglePause: () => engine.togglePause(),
+          skip: () => engine.injectCommand('skip'),
+          repeat: () => engine.injectCommand('repeat'),
+        },
+        'Code by Ear',
+        profile === 'drive' ? 'Drive session' : 'Parked session',
+      )
+      let wasPaused = false
+      unsubButtons = engine.subscribe((v) => {
+        if (v.paused !== wasPaused) mediaButtons.setPaused((wasPaused = v.paused))
+        if (v.phase === 'recap' || v.phase === 'ended') mediaButtons.stop()
+      })
+    }
     void holdWakeLock()
     const onVis = () => {
       if (document.visibilityState === 'hidden') engine.requestPause('hidden')
@@ -107,6 +125,8 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
       clearInterval(tick)
       document.removeEventListener('visibilitychange', onVis)
       unsub()
+      unsubButtons()
+      if (s.mediaButtons) mediaButtons.stop()
       engine.quit()
       stopSpeaking()
       void releaseWakeLock()

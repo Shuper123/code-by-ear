@@ -77,6 +77,13 @@ FAKE_SPEECH = r"""
   }
   window.SpeechRecognition = FakeRecognition;
   window.webkitSpeechRecognition = FakeRecognition;
+
+  // Media Session: keep a handle on the handlers the app registers, so the test can "press" buttons.
+  window.__media = {};
+  if (navigator.mediaSession) {
+    const orig = navigator.mediaSession.setActionHandler.bind(navigator.mediaSession);
+    navigator.mediaSession.setActionHandler = (a, h) => { window.__media[a] = h; try { orig(a, h); } catch (e) {} };
+  }
 })();
 """
 
@@ -287,6 +294,96 @@ async def main():
                   "Dictate worked example 2 (SQL) shows the exact query")
             await page.screenshot(path=f"{OUT}/25-dictate-sql.png", full_page=True)
             check(True, "Dictate worked example 2 (SQL) ran in sql.js and scored correct")
+
+            # ---------- M4: Progress, Drills browser, export and import, media buttons ----------
+            await page.goto(URL, wait_until="networkidle")
+            await page.get_by_text("Progress", exact=True).first.click()
+            await page.wait_for_timeout(800)
+            body = await page.inner_text("body")
+            check("Streak:" in body and "Ladders" in body and "sum_evens" in body, "Progress shows streak and ladders")
+            await page.screenshot(path=f"{OUT}/30-progress.png", full_page=True)
+            async with page.expect_download() as dl_info:
+                await page.get_by_text("Export progress").click()
+            dl = await dl_info.value
+            backup_path = f"{OUT}/backup.json"
+            await dl.save_as(backup_path)
+            raw = open(backup_path).read()
+            backup = json.loads(raw)
+            n_attempts = len(backup["attempts"])
+            check(backup["format"] == "code-by-ear-backup" and n_attempts >= 5 and dl.suggested_filename.startswith("code-by-ear-backup-"),
+                  f"export downloads a backup ({n_attempts} answers, {dl.suggested_filename})")
+            check(FAKE_KEY not in raw, "the backup does not contain the API key")
+            count_attempts = """async () => {
+              const req = indexedDB.open('code-by-ear', 1);
+              await new Promise(r => req.onsuccess = r);
+              const tx = req.result.transaction(['attempts', 'kv'], 'readonly');
+              const c = tx.objectStore('attempts').count(), k = tx.objectStore('kv').get('apiKey');
+              await new Promise(r => tx.oncomplete = r);
+              req.result.close();
+              return [c.result, k.result];
+            }"""
+            await page.evaluate("""async () => {
+              const req = indexedDB.open('code-by-ear', 1);
+              await new Promise(r => req.onsuccess = r);
+              const tx = req.result.transaction(['attempts', 'drillState'], 'readwrite');
+              tx.objectStore('attempts').clear(); tx.objectStore('drillState').clear();
+              await new Promise(r => tx.oncomplete = r);
+              req.result.close();
+            }""")
+            check((await page.evaluate(count_attempts))[0] == 0, "progress wiped before the import")
+            await page.set_input_files("input[type=file]", backup_path)
+            await page.wait_for_timeout(300)
+            check(await page.get_by_text("Replace my progress").count() == 1, "import shows what the backup holds and asks first")
+            await page.screenshot(path=f"{OUT}/31-import-confirm.png", full_page=True)
+            await page.get_by_text("Replace my progress").click()
+            await page.wait_for_timeout(2500)
+            restored, key = await page.evaluate(count_attempts)
+            check(restored == n_attempts, f"import restored every answer ({restored} of {n_attempts})")
+            check(key == FAKE_KEY, "import kept the API key already on the phone")
+
+            # Drills browser: filters and search survive a practice session
+            await page.goto(URL, wait_until="networkidle")
+            await page.get_by_text("Drills", exact=True).first.click()
+            await page.locator("select").first.select_option("python")
+            await page.locator("input[type=search]").fill("sum evens")
+            await page.wait_for_timeout(200)
+            items = page.locator(".drill-item")
+            check(await items.count() == 3, f"search finds the sum evens ladder ({await items.count()} drills)")
+            await page.locator(".drill-item .t", has_text="py-p3-sketch-013").click()
+            check(await page.get_by_text("def sum_evens(nums):").count() == 1, "tapping a drill shows its code")
+            await page.screenshot(path=f"{OUT}/32-drills.png", full_page=True)
+            await page.evaluate("window.__script = (last) => null")
+            await page.locator(".drill-item", has_text="py-p3-plan-l013").get_by_text("Practice").click()
+            await page.wait_for_function("window.__said.some(s => s.includes('Plan this out loud'))", timeout=20000)
+            await page.get_by_text("End", exact=True).click()
+            await page.wait_for_timeout(800)
+            await page.get_by_text("Home", exact=True).click()
+            await page.wait_for_timeout(500)
+            check(await page.locator("input[type=search]").input_value() == "sum evens", "Drills keeps its filters after a session")
+
+            # Media Session spike: with the setting on, play/pause pauses and resumes the session
+            await page.evaluate("""async () => {
+              const req = indexedDB.open('code-by-ear', 1);
+              await new Promise(r => req.onsuccess = r);
+              const tx = req.result.transaction('kv', 'readwrite');
+              const st = tx.objectStore('kv'); const g = st.get('settings');
+              await new Promise(r => g.onsuccess = r);
+              st.put({ ...(g.result || {}), mediaButtons: true }, 'settings');
+              await new Promise(r => tx.oncomplete = r);
+              req.result.close();
+            }""")
+            await practice(page, "py-p1-explain-001", "(last) => null", "What does")
+            await page.wait_for_timeout(300)
+            check(await page.evaluate("typeof window.__media.pause === 'function' && typeof window.__media.nexttrack === 'function'"),
+                  "a session registers media button handlers when the setting is on")
+            await page.evaluate("window.__media.pause()")
+            await page.wait_for_timeout(600)
+            check(await page.get_by_role("button", name="Resume").count() == 1, "headset pause button pauses the session")
+            await page.evaluate("window.__media.play()")
+            await page.wait_for_timeout(600)
+            check(await page.get_by_role("button", name="Pause").count() == 1, "headset play button resumes the session")
+            await page.get_by_text("End", exact=True).click()
+            await page.wait_for_timeout(500)
 
             # without a key: falls back cleanly
             await set_kv(page, "apiKey", "")

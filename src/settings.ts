@@ -22,6 +22,7 @@ export interface Settings {
   sttContinuous: boolean // recognizer "continuous" flag; false = one utterance per recognizer run
   restartDelayMs: number // pause between recognizer restarts
   pauseListening: boolean // while paused, keep listening for "continue"
+  mediaButtons: boolean // M4 spike: headset and steering-wheel buttons through the Media Session API
   breakEveryMin: number
   cueVolume: number // 0..1
 }
@@ -42,6 +43,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sttContinuous: false,
   restartDelayMs: 120,
   pauseListening: true,
+  mediaButtons: false,
   breakEveryMin: 10,
   cueVolume: 0.35,
 }

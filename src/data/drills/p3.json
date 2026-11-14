@@ -563,5 +563,165 @@
       "Use if, elif, and a final return."
     ],
     "model_answer_spoken": "Define size label of qty. If qty is less than 100, return small. Else if qty is less than 300, return medium. Otherwise return large."
+  },
+  {
+    "id": "py-p3-plan-l013",
+    "lang": "python",
+    "unit": "P3",
+    "level": 1,
+    "type": "plan",
+    "ladder": "py-ladder-013",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "loops",
+      "if",
+      "modulo"
+    ],
+    "prompt_spoken": "Plan this out loud. Write a function, sum evens, that takes a list of numbers and returns the sum of the even numbers.",
+    "rubric": [
+      "a total starting at zero",
+      "loop over the numbers",
+      "add a number when n mod 2 is equal to 0",
+      "return the total"
+    ],
+    "hints_spoken": [],
+    "model_answer_spoken": "Start a total at zero. Loop over the numbers, add each one where n mod 2 is equal to 0, then return the total."
+  },
+  {
+    "id": "py-p3-sketch-013",
+    "lang": "python",
+    "unit": "P3",
+    "level": 2,
+    "type": "sketch",
+    "ladder": "py-ladder-013",
+    "difficulty": 1,
+    "drive_ok": true,
+    "topics": [
+      "loops",
+      "if",
+      "modulo"
+    ],
+    "prompt_spoken": "Write a function, sum evens, that takes a list of numbers and returns the sum of the even numbers.",
+    "reference": "def sum_evens(nums):\n    total = 0\n    for n in nums:\n        if n % 2 == 0:\n            total += n\n    return total",
+    "signature": "def sum_evens(nums):",
+    "function_name": "sum_evens",
+    "tests": [
+      {
+        "args": [
+          [
+            1,
+            2,
+            3,
+            4
+          ]
+        ],
+        "expected": 6
+      },
+      {
+        "args": [
+          []
+        ],
+        "expected": 0
+      },
+      {
+        "args": [
+          [
+            1,
+            3,
+            5
+          ]
+        ],
+        "expected": 0
+      },
+      {
+        "args": [
+          [
+            -2,
+            3,
+            10
+          ]
+        ],
+        "expected": 8
+      }
+    ],
+    "vocab": [
+      "sum_evens",
+      "nums",
+      "total"
+    ],
+    "hints_spoken": [
+      "A number is even when n mod 2 is equal to 0.",
+      "Start a total at zero and add to it inside the if."
+    ],
+    "model_answer_spoken": "Define sum evens of nums. total equals 0. For each n in nums, if n mod 2 is equal to 0, add n to total. Return total."
+  },
+  {
+    "id": "py-p3-dictate-013",
+    "lang": "python",
+    "unit": "P3",
+    "level": 3,
+    "type": "dictate",
+    "ladder": "py-ladder-013",
+    "difficulty": 1,
+    "drive_ok": false,
+    "topics": [
+      "loops",
+      "if",
+      "modulo"
+    ],
+    "prompt_spoken": "Dictate this in Verbal Syntax. Write a function, sum evens, that takes a list of numbers and returns the sum of the even numbers.",
+    "reference": "def sum_evens(nums):\n    total = 0\n    for n in nums:\n        if n % 2 == 0:\n            total += n\n    return total",
+    "signature": "def sum_evens(nums):",
+    "function_name": "sum_evens",
+    "tests": [
+      {
+        "args": [
+          [
+            1,
+            2,
+            3,
+            4
+          ]
+        ],
+        "expected": 6
+      },
+      {
+        "args": [
+          []
+        ],
+        "expected": 0
+      },
+      {
+        "args": [
+          [
+            1,
+            3,
+            5
+          ]
+        ],
+        "expected": 0
+      },
+      {
+        "args": [
+          [
+            -2,
+            3,
+            10
+          ]
+        ],
+        "expected": 8
+      }
+    ],
+    "vocab": [
+      "sum_evens",
+      "nums",
+      "total"
+    ],
+    "hints_spoken": [
+      "A number is even when n mod 2 is equal to 0.",
+      "Start a total at zero and add to it inside the if."
+    ],
+    "model_answer_spoken": "Define sum evens of nums. total equals 0. For each n in nums, if n mod 2 is equal to 0, add n to total. Return total."
   }
 ]

@@ -141,6 +141,23 @@ function readDecimal(tokens: string[], i: number, intPart: string): ReadNum {
   return { value: intPart, next: i }
 }
 
+/**
+ * Read a spoken number starting at tokens[i] ("twenty five", "three point five", "negative two",
+ * "25"). Returns the digits and the index after it, or null. Shared with the Verbal Syntax parser.
+ */
+export function readSpokenNumber(tokens: string[], i: number): { value: string; next: number } | null {
+  const t = tokens[i]
+  if (t === undefined) return null
+  if ((t === 'negative' || t === 'minus') && i + 1 < tokens.length) {
+    const r = readSpokenNumber(tokens, i + 1)
+    if (r && !r.value.startsWith('-')) return { value: `-${r.value}`, next: r.next }
+    return null
+  }
+  if (isNumericToken(t)) return /^\d+$/.test(t) ? readDecimal(tokens, i + 1, t) : { value: t, next: i + 1 }
+  if (t === 'point' && i + 1 < tokens.length && tokens[i + 1] in DIGIT_WORDS) return readDecimal(tokens, i, '0')
+  return readNumberWords(tokens, i)
+}
+
 function convertNumbers(tokens: string[]): string[] {
   const out: string[] = []
   let i = 0

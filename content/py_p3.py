@@ -236,3 +236,27 @@ DRILLS += ladder(
     model_answer=("Define size label of qty. If qty is less than 100, return small. Else if qty is less than 300, "
                   "return medium. Otherwise return large."),
 )
+# Section 9 worked example 1, as a ladder, so it can be dictated and run in Parked.
+DRILLS += ladder(
+    "python", UNIT, 13, topics=["loops", "if", "modulo"], difficulty=1, sketch_drive_ok=True,
+    task="Write a function, sum evens, that takes a list of numbers and returns the sum of the even numbers.",
+    plan_rubric=["a total starting at zero", "loop over the numbers", "add a number when n mod 2 is equal to 0",
+                 "return the total"],
+    plan_model="Start a total at zero. Loop over the numbers, add each one where n mod 2 is equal to 0, then return the total.",
+    signature="def sum_evens(nums):",
+    function_name="sum_evens",
+    reference="""
+        def sum_evens(nums):
+            total = 0
+            for n in nums:
+                if n % 2 == 0:
+                    total += n
+            return total
+    """,
+    tests=[dict(args=[[1, 2, 3, 4]], expected=6), dict(args=[[]], expected=0), dict(args=[[1, 3, 5]], expected=0),
+           dict(args=[[-2, 3, 10]], expected=8)],
+    vocab=["sum_evens", "nums", "total"],
+    hints=["A number is even when n mod 2 is equal to 0.", "Start a total at zero and add to it inside the if."],
+    model_answer=("Define sum evens of nums. total equals 0. For each n in nums, if n mod 2 is equal to 0, add n to "
+                  "total. Return total."),
+)

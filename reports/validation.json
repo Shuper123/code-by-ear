@@ -1,12 +1,12 @@
 {
-  "drills": 216,
+  "drills": 222,
   "level1": {
     "python": 73,
     "sql": 71
   },
   "ladders": {
-    "python": 12,
-    "sql": 12
+    "python": 13,
+    "sql": 13
   },
   "errors": {},
   "warnings": {},
@@ -51,6 +51,10 @@
       "hash": "ebc4dd7e0f3d0a53",
       "rows": 6
     },
+    "sql-s3-dictate-013": {
+      "hash": "62de1da1da7b5505",
+      "rows": 3
+    },
     "sql-s3-sketch-004": {
       "hash": "f044c641fb7f148e",
       "rows": 12
@@ -58,6 +62,10 @@
     "sql-s3-sketch-005": {
       "hash": "ebc4dd7e0f3d0a53",
       "rows": 6
+    },
+    "sql-s3-sketch-013": {
+      "hash": "62de1da1da7b5505",
+      "rows": 3
     },
     "sql-s4-dictate-007": {
       "hash": "c89eae1dc624c934",

@@ -14,13 +14,15 @@ import { listen } from '../speech/stt'
 import { speak, stopSpeaking } from '../speech/tts'
 import type { Profile } from '../storage/db'
 import { AiServices } from '../ai/services'
+import { makeDictateHook } from '../engine/dictate'
 import { makeSketchHook, type Runners } from '../engine/sketch'
 import { loadPython, pythonState, runPythonTests } from '../runtimes/py'
 import { runSql } from '../runtimes/sql'
 import { goBack, navigate } from './nav'
+import { VerbalCheatSheet } from './VerbalCheatSheet'
 
 /** Drill types this build can run in sessions. */
-export const SUPPORTED_TYPES: ReadonlySet<string> = new Set(['predict', 'explain', 'spot_bug', 'plan', 'concept', 'sketch'])
+export const SUPPORTED_TYPES: ReadonlySet<string> = new Set(['predict', 'explain', 'spot_bug', 'plan', 'concept', 'sketch', 'dictate'])
 
 export const runners: Runners = {
   runSql: (dataset, sql) => runSql(dataset, sql),
@@ -82,7 +84,7 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
       today: () => localDate(),
       store: idbStore,
       grader: ai,
-      typeHooks: { sketch: makeSketchHook(ai, runners) },
+      typeHooks: { sketch: makeSketchHook(ai, runners), dictate: makeDictateHook(ai, runners) },
       onRateChange: (p, rate) => void updateSettings(p === 'drive' ? { rateDrive: rate } : { rateParked: rate }),
       supportedTypes: SUPPORTED_TYPES,
     }
@@ -195,8 +197,8 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
       {d && (
         <div class="card">
           <div class="step">
-            {d.lang === 'sql' ? 'SQL' : 'Python'} · {UNIT_NAMES[d.unit]} · {TYPE_LABEL[d.type]} · Level {d.level}{' '}
-            {LEVEL_NAMES[d.level]}
+            {d.lang === 'sql' ? 'SQL' : 'Python'} · {UNIT_NAMES[d.unit]} · {TYPE_LABEL[d.type]}
+            {TYPE_LABEL[d.type] === LEVEL_NAMES[d.level] ? ` · Level ${d.level}` : ` · Level ${d.level} ${LEVEL_NAMES[d.level]}`}
           </div>
           {d.code && (
             <div class="code" style={{ marginTop: '8px' }}>
@@ -208,7 +210,9 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
       )}
       <div class="card">
         <div class="step">You</div>
-        <div class="transcript">{view.phase === 'listening' ? view.heard || '…' : view.lastAnswer || view.heard || '…'}</div>
+        <div class="transcript">
+          {view.phase === 'listening' || d?.type === 'dictate' ? view.heard || '…' : view.lastAnswer || view.heard || '…'}
+        </div>
         {view.phase === 'listening' && /Say go to run it, or redo\.$/.test(view.said) && (
           <div class="row" style={{ marginTop: '10px' }}>
             <button class="btn primary" onClick={() => cmd('go')}>
@@ -216,6 +220,19 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
             </button>
             <button class="btn" onClick={() => cmd('redo')}>
               Redo
+            </button>
+          </div>
+        )}
+        {d?.type === 'dictate' && (
+          <div class="row" style={{ marginTop: '10px' }}>
+            <button class="btn primary" disabled={view.phase !== 'listening'} onClick={() => engine.injectText('run it')}>
+              Run it
+            </button>
+            <button class="btn" disabled={view.phase !== 'listening'} onClick={() => engine.injectText('read it back')}>
+              Read it back
+            </button>
+            <button class="btn" disabled={view.phase !== 'listening'} onClick={() => engine.injectText('scratch that')}>
+              Scratch that
             </button>
           </div>
         )}
@@ -239,13 +256,14 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
       </div>
       {view.detail.code && (
         <div class="card">
-          <div class="step">Your code, converted</div>
+          <div class="step">{d?.type === 'dictate' ? 'Your code' : 'Your code, converted'}</div>
           <div class="code" style={{ marginTop: '8px' }}>
             {view.detail.code}
           </div>
           {view.detail.note && <p class="small">{view.detail.note}</p>}
         </div>
       )}
+      {d?.type === 'dictate' && <VerbalCheatSheet lang={d.lang} />}
       <div class="card">
         <div class="step">App</div>
         <p>{view.said}</p>

@@ -427,3 +427,16 @@ input[type='range'] {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.cheat-sheet summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 4px 0;
+}
+.cheat-sheet code {
+  font-family: var(--mono, ui-monospace, monospace);
+  white-space: pre-wrap;
+}
+.cheat-sheet td:first-child {
+  width: 58%;
+}

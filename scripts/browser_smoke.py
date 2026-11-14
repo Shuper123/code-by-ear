@@ -43,16 +43,17 @@ FAKE_SPEECH = r"""
   Object.defineProperty(window, 'speechSynthesis', { value: synth, configurable: true });
   window.SpeechSynthesisUtterance = function (text) { this.text = text; this.rate = 1; this.volume = 1; };
 
-  // The fake user answers once after each thing the app says, like a person would.
-  window.__answeredAt = -1;
+  // The fake user answers once per listen (the app counts listens in window.__cbeListenSeq).
+  window.__answeredSeq = -1;
   function answerFor() {
-    if (window.__answeredAt === window.__said.length) return null;
-    window.__answeredAt = window.__said.length;
+    if (window.__answeredSeq === window.__cbeListenSeq) return null;
     const last = window.__said[window.__said.length - 1] || '';
-    if (window.__script) return window.__script(last);
-    if (/Say yes, partly/.test(last)) return 'yes';
-    if (/Say continue/.test(last)) return 'continue';
-    return 'one';
+    let text = 'one';
+    if (window.__script) text = window.__script(last);
+    else if (/Say yes, partly/.test(last)) text = 'yes';
+    else if (/Say continue/.test(last)) text = 'continue';
+    if (text) window.__answeredSeq = window.__cbeListenSeq;  // staying quiet doesn't use up the turn
+    return text;
   }
   class FakeRecognition {
     constructor() { this.continuous = false; this.interimResults = false; this.lang = 'en-US'; this.maxAlternatives = 1; this._live = false; }
@@ -130,7 +131,7 @@ async def set_kv(page, key, value):
 
 async def practice(page, drill_id, script, wait_for, timeout_ms=60000):
     await page.goto(URL, wait_until="networkidle")
-    await page.evaluate(f"window.__script = {script}")
+    await page.evaluate("(src) => { window.__script = (0, eval)(src) }", script)
     await page.get_by_text("Drills", exact=True).first.click()
     lang = "python" if drill_id.startswith("py-") else "sql"
     await page.locator("select").first.select_option(lang)
@@ -252,6 +253,41 @@ async def main():
             await page.wait_for_function("document.body.innerText.includes('6 of 6')", timeout=30000)
             await page.screenshot(path=f"{OUT}/22-selftest.png", full_page=True)
             check("6 of 6" in await page.inner_text("body"), "AI self-test reports 6 of 6 with the fake API")
+            # ---------- M3: Dictate in Verbal Syntax (Parked): both worked examples from spec section 9 ----------
+            utterances = [
+                "def snake sum evens open paren nums close paren colon", "next total equals zero",
+                "next for n in nums colon next if n mod two is equal to zero colon", "next total plus equals n",
+                "next back back return total", "run it",
+            ]
+            # the fake user holds "run it" until the dictated code has been checked on screen
+            await practice(page, "py-p3-dictate-013",
+                           f"(() => {{ window.__hold = true; const q = {json.dumps(utterances)}; return (last) => "
+                           "!q.length || (q[0] === 'run it' && window.__hold) ? null : q.shift() })()",
+                           "Dictate. Write a function")
+            await page.wait_for_function("[...document.querySelectorAll('.code')].some(e => e.innerText.includes('return total'))",
+                                         timeout=30000)
+            body = await page.inner_text("body")
+            check("def sum_evens(nums):\n    total = 0\n    for n in nums:\n        if n % 2 == 0:\n"
+                  "            total += n\n    return total" in body, "Dictate shows worked example 1, indented, while you dictate")
+            await page.get_by_text("Verbal Syntax cheat sheet").click()
+            await page.wait_for_timeout(200)
+            check(await page.get_by_text("undo your last utterance").is_visible(), "Dictate cheat sheet opens")
+            await page.screenshot(path=f"{OUT}/23-dictate-code.png", full_page=True)
+            await page.evaluate("window.__hold = false")
+            await page.wait_for_function("window.__said.some(s => s.includes('Correct. All the tests pass.'))", timeout=120000)
+            await page.screenshot(path=f"{OUT}/24-dictate-passed.png", full_page=True)
+            check(True, "Dictate worked example 1 (Python) ran in Pyodide and scored correct")
+
+            sql_said = ("select part id comma sum open paren qty close paren as total from lots group by part id "
+                        "order by total descending limit three")
+            await practice(page, "sql-s3-dictate-013",
+                           f"(() => {{ const q = {json.dumps([sql_said, 'run it'])}; return (last) => q.length ? q.shift() : null }})()",
+                           "Correct. Your rows match the answer.")
+            check(await page.get_by_text("SELECT part_id, SUM(qty) AS total FROM lots GROUP BY part_id ORDER BY total DESC LIMIT 3").count() >= 1,
+                  "Dictate worked example 2 (SQL) shows the exact query")
+            await page.screenshot(path=f"{OUT}/25-dictate-sql.png", full_page=True)
+            check(True, "Dictate worked example 2 (SQL) ran in sql.js and scored correct")
+
             # without a key: falls back cleanly
             await set_kv(page, "apiKey", "")
             await practice(page, "py-p1-explain-001",

@@ -4,7 +4,7 @@
 - Spec: "Code by Ear: Build Plan" doc, https://claude.ai/artifact/CzQVMPkJ4s1w8pv6QvThSM (sections are numbered in
   order: 3 Decisions, 5 Sessions, 6 Grading, 7 Learning engine, 8 Content, 9 Verbal Syntax, 12 Safety and privacy,
   13 Milestones, 14 Testing)
-- Last updated: 2026-11-14, milestone 2 deployed
+- Last updated: 2026-11-14, milestone 3 deployed
 
 ## Milestones
 
@@ -13,7 +13,7 @@
 | M0 Skeleton, deploy, voice spikes | Deployed, waiting for phone test | "Voice check" on Home |
 | M1 Level 1 for both languages | Deployed, waiting for phone test | 144 Level 1 drills, Drive and Parked sessions |
 | M2 AI grading and Sketch | Deployed, waiting for phone test | AI grading, Sketch for SQL and Python, 24 ladders |
-| M3 Verbal Syntax and Dictate | Not started | |
+| M3 Verbal Syntax and Dictate | Deployed, waiting for phone test | Parser, edit commands, read-back, Dictate in Parked; 26 ladders |
 | M4 Polish | Not started | Basic Progress screen and Drills browser already exist |
 
 ## What works
@@ -72,6 +72,27 @@ M2
   24 SQL references; Pyodide passes all 12 Python references). The browser smoke test now also runs SQL and
   Python Sketch end to end in headless Chrome with a fake Anthropic API (19 checks, all passing).
 
+M3
+- Verbal Syntax v0.1 parser (`src/verbal/syntax.ts`), rules only, no AI: normalize (lowercase, number words,
+  recognizer punctuation and operator symbols), longest phrase first, the drill's vocabulary (multi-word, fuzzy with
+  edit distance up to 2, sounds-alike, aliases), emit tokens with indent tracking, format with standard spacing.
+  Code is kept as lines of tokens, so read-back, "scratch that" and "go to line" are exact.
+- Edit commands (whole utterances only): scratch that, delete line, go to line N, read it back, read line, run it
+  (also "done"), start over. Read-back speaks the code in Verbal Syntax words with indentation ("Line 2, indented
+  once. count equals 0.").
+- Dictate (Level 3, Parked only, `src/engine/dictate.ts`): the prompt gives the task and the spoken signature;
+  you dictate in as many utterances as you like; the code builds on screen; "run it" checks syntax and runs the
+  hidden tests (Python, Pyodide) or compares rows (SQL, sql.js). Syntax errors, unknown columns or tables and
+  undefined names are not graded: the app says what's wrong and you fix it and run again. Scoring matches Sketch.
+  Parked has Run it, Read it back and Scratch that buttons and a folded Verbal Syntax cheat sheet.
+- Both worked examples from spec section 9 are now drills: `py-p3-dictate-013` (sum evens) and
+  `sql-s3-dictate-013` (top 3 parts by total quantity), each a full ladder (Plan, Sketch, Dictate). 222 drills, all
+  validated.
+- Tests: 376 unit tests. 121 Verbal Syntax tests (both worked examples, every cheat sheet row, edit commands,
+  read-back, dictated code passing ladder tests in Pyodide and sql.js) and 9 simulated Parked Dictate sessions
+  (multi-utterance, fix-and-rerun, edit commands, silence, both worked examples). The browser smoke test dictates
+  both worked examples in headless Chrome and checks the code on screen (all checks passing).
+
 ## What to test on the phone
 
 1. M0 list: install from Chrome, run the voice loop and the long-answer test in Voice check, at home and in the car.
@@ -88,6 +109,13 @@ M2
    words, then "go". Then Python, P3, Sketch "count above" (the first Python run downloads about 12 MB).
 9. A Parked Explain drill with the key: feedback should arrive in about 4 seconds. Remove the key: the same drill
    falls back to self-rating.
+10. M3 done-criterion: Drills, Python, P3, type Dictate, "sum evens", Practice. Say worked example 1 from spec
+    section 9 (in one breath or in pieces), watch the code build, say "read it back", then "run it". Then Drills,
+    SQL, S3, Dictate, "three parts with the largest total quantity", and say worked example 2, then "run it".
+11. Try the edit commands: "scratch that" after a wrong piece, "go to line 2", "delete line", "start over". Leave
+    off a colon on purpose: "run it" should tell you it doesn't parse yet and let you fix it, not grade it.
+12. Note any word the recognizer keeps mishearing (for example "colon" or "paren"); the YOU box shows exactly what
+    it heard. Those become aliases in the parser.
 
 ## Known issues and open questions
 
@@ -98,7 +126,11 @@ M2
   what the two Settings checks are for. Automated tests use mocked replies.
 - Sketch read-back repeats the transcript and assumptions, not the converted code (Parked shows the code).
 - In sessions, a ladder's Sketch opens only after its unit's Level 1 average reaches 2.0 over 10 attempts and the
-  ladder's Plan scored 2 or more; use Drills to try Sketch sooner. Dictate steps exist but play from M3.
+  ladder's Plan scored 2 or more, and Dictate after Sketch passes; use Drills to try either sooner.
+- Verbal Syntax has only been tested with typed transcripts and fake speech. Real recognizer output for words like
+  "colon", "paren" and "def" is the main unknown; keywords are not fuzzy-matched yet (names are).
+- Dictate grades only when you say "run it", so a long silence pauses the session (after one reminder) rather
+  than scoring a 0.
 - Spec gap: Dictate opens after Sketch passes, but without a key Sketch is a self-rated Plan. A self-rated 2 or
   more on that Plan counts as a pass so Dictate doesn't stay locked forever without a key.
 - The headless test browser has no real voices or microphone; speech was tested with fakes only.
@@ -124,6 +156,14 @@ M2
 - **SQL Predict drills** state the facts they need ("Lots 1 to 5 have quantities ...") and run against the real
   factory data, or use plain expressions. Some ask for a row count (`answer_kind: "row_count"`).
 - **Level 2 opens** after at least 10 Level 1 attempts in the unit averaging 2.0 or more.
+- **Verbal Syntax workshop questions (spec section 9), as built:** 1. "next" and "new line" both work. 2. Yes,
+  "sum of qty" writes `SUM(qty)` (SQL: sum, count, avg, min, max, upper, lower, length; Python: len, sum, sorted,
+  max, min, int, str and similar); the paren closes after the next name or value. 3. Other parentheses never close
+  by themselves; say "close paren". 4. Plain letters and NATO words both work for "spell". 5. No automatic
+  read-back per line: Parked shows the code, and "read it back" or "read line" speaks it on request.
+- **Dictate edits:** "done" also means run it. Fixable errors (syntax, unknown column or table, undefined name)
+  don't count as an attempt; you fix and re-run. Test failures and wrong rows are graded like Sketch.
+- **Worked examples as drills:** added ladder 13 in P3 and S3 so the M3 done-criterion can be run from Drills.
 - Toolchain pinned to well-known majors: Vite 7.3, Preact 10.29, TypeScript 5.9, Vitest 3.2, vite-plugin-pwa 1.3, idb 8.
 - Recognizer defaults: `continuous = false` (one phrase per run, restarted by the app), restart delay 120 ms. Both
   are adjustable in Settings, Listening, Recognizer options.
@@ -144,13 +184,13 @@ M2
   `src/speech` stt/tts/cues/commands, `src/grading`, `src/runtimes`, `src/verbal`, `src/ai`, `src/data`,
   `src/storage`, `scripts/`, `tests/`.
 - The engine gets speech, time and storage injected (`EngineDeps`), so `tests/session.test.ts` can simulate whole
-  sessions. Milestone 2 plugs AI grading and Sketch in through `sessionExtensions` in `src/app/SessionScreen.tsx`.
+  sessions. AI grading, Sketch and Dictate plug in through `typeHooks` (see `makeSketchHook`, `makeDictateHook`)
+  wired up in `src/app/SessionScreen.tsx`.
 - Never commit an API key. Never ask the user to paste a key into chat.
 
 ## Next steps
 
-- M3 (Parked only): Verbal Syntax parser pipeline from spec section 9 (normalize, longest phrase match, vocabulary
-  fuzzy match, emit with indentation, format, syntax check), edit commands (scratch that, delete line, go to line,
-  read it back, read line, run it, start over), read-back, at least 60 unit tests including both worked examples,
-  then a `dictate` type hook in `src/engine/` like `sketch.ts`, and add 'dictate' to SUPPORTED_TYPES.
-- M4: export and import, polish Progress and Drills, Media Session API spike.
+- After Joshua's phone test of M3: add aliases for words the recognizer mishears; consider fuzzy matching for
+  keywords if mishearings are common.
+- M4: export and import (progress JSON, never the API key), polish Progress and Drills, Media Session API spike
+  for headset or steering-wheel buttons.

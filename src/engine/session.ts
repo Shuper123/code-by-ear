@@ -119,6 +119,10 @@ export interface DrillContext {
   saveNote(field: 'plan' | 'sketch' | 'dictate', text: string): Promise<void>
   followUp(transcript: string): Promise<void>
   show(detail: { code?: string; note?: string }): void
+  /** Count the drill as done without a score. */
+  skip(): void
+  /** Pause the session (spoken message), then carry on from here when resumed. */
+  pause(message: string): Promise<void>
   profile: Profile
   signal: AbortSignal
 }
@@ -139,6 +143,7 @@ export class SessionEngine {
   private resumeResolve: (() => void) | null = null
   private listenHandle: ListenHandle | null = null
   private pendingCommand: Command | null = null
+  private pendingText: string | null = null
   private pauseListenStop = false
   private queue!: SessionQueue
   private states = new Map<string, DrillState>()
@@ -232,6 +237,15 @@ export class SessionEngine {
     }
   }
 
+  /** Parked buttons that stand for a spoken phrase ("run it", "scratch that"). */
+  injectText(text: string): void {
+    if (this.listenHandle) {
+      this.pendingText = text
+      this.update({ heard: text })
+      this.listenHandle.abort()
+    }
+  }
+
   /** "Done talking" button: end the current answer and keep what was heard. */
   finishAnswer(): void {
     this.listenHandle?.stop()
@@ -306,6 +320,7 @@ export class SessionEngine {
     this.check()
     this.update({ phase: 'listening', heard: '' })
     this.pendingCommand = null
+    this.pendingText = null
     const h = this.deps.listen(this.listenOpts(allowed, o))
     this.listenHandle = h
     let r: ListenResult & { command?: string }
@@ -317,6 +332,9 @@ export class SessionEngine {
     if (this.pendingCommand) {
       r = { ...r, reason: 'command', command: this.pendingCommand, text: '' }
       this.pendingCommand = null
+    } else if (this.pendingText !== null) {
+      r = { ...r, reason: 'done', command: undefined, text: this.pendingText, heardSpeech: true }
+      this.pendingText = null
     }
     this.check()
     if (r.command === 'pause') {
@@ -505,6 +523,8 @@ export class SessionEngine {
       saveNote: (field, text) => (drill.ladder ? this.deps.store.saveNote(drill.ladder, field, text) : Promise.resolve()),
       followUp: (transcript) => this.followUp(drill, transcript),
       show: (detail) => this.update({ detail: { ...this.view.detail, ...detail } }),
+      skip: () => this.update({ done: this.view.done + 1 }),
+      pause: (message) => this.pausedWait('auto', message),
       profile: this.cfg.profile,
       get signal() {
         return self.ctrl.signal

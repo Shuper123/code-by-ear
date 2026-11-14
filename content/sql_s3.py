@@ -173,3 +173,18 @@ DRILLS += ladder(
     hints=["Group by defect code.", "Filter the groups with having."],
     model_answer="Select defect code and the count of rows from defects, grouped by defect code, having a count of at least 20.",
 )
+# Section 9 worked example 2, as a ladder, so it can be dictated and run in Parked.
+DRILLS += ladder(
+    "sql", UNIT, 13, dataset="factory", topics=["group by", "sum", "order by", "limit"], difficulty=2,
+    sketch_drive_ok=True, order_matters=True,
+    task="Using the lots table, find the three parts with the largest total quantity, largest first.",
+    plan_rubric=["select part id and the sum of qty from lots", "group by part id", "order by the total descending",
+                 "limit 3"],
+    plan_model=("Select part id and the sum of quantity as total from lots, group by part id, order by total "
+                "descending, and limit it to 3 rows."),
+    reference="SELECT part_id, SUM(qty) AS total FROM lots GROUP BY part_id ORDER BY total DESC LIMIT 3;",
+    vocab=["lots", "part_id", "qty", "total"],
+    hints=["Start from the total quantity per part.", "Sort the totals from largest down, then keep 3."],
+    model_answer=("Select part id and the sum of quantity as total from lots, grouped by part id, ordered by total "
+                  "descending, limit 3."),
+)

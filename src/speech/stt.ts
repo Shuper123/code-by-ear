@@ -190,6 +190,9 @@ const NETWORK_RETRIES = 2
 const MAX_CONSECUTIVE_ODD_ERRORS = 4
 
 export function listen(opts: ListenOptions): ListenHandle {
+  // debug counter: lets the browser smoke test's fake user answer once per listen
+  const g = globalThis as unknown as { __cbeListenSeq?: number }
+  g.__cbeListenSeq = (g.__cbeListenSeq ?? 0) + 1
   const factory = opts.factory === undefined ? browserRecognizerFactory() : opts.factory
   let resolveResult!: (r: ListenResult) => void
   const result = new Promise<ListenResult>((r) => (resolveResult = r))

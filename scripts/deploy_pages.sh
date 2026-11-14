@@ -42,6 +42,7 @@ git -c push.negotiate=true push origin "$BRANCH"
 
 WT="$(mktemp -d)"
 cleanup() {
+  cd "$ROOT"
   git worktree remove --force "$WT" >/dev/null 2>&1 || rm -rf "$WT"
   git worktree prune
 }

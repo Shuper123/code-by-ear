@@ -186,6 +186,20 @@ activity; typed mode closes the loop at the keyboard and measures whether the vo
   b dot x". A clause said again replaces it; "and ...", "comma ..." and "descending" continue the clause said last;
   an expression with no keyword is a new column. A clause the recognizer cut in two at a pause is put back together
   ("where quantity greater than" ... "400"; a case or a window finished in the next breath).
+- **A pause in the middle of a clause is not an error** (`unfinishedClause` in `parse.ts`): a case with no end, an
+  operator with nothing after it, an open parenthesis, a between with no "and", "sum of" with nothing after it. The
+  query is not run, the app says "Go on." and listens again, and the screen shows "not finished, keep going". The
+  whole clause is echoed and run once it is complete. If a different clause is said meanwhile, the app names the
+  unfinished one ("The where clause isn't finished.") and the next words without a keyword go to it.
+- **Everyday wording** (second pass on 2026-11-15, after running natural phrasings of all 20 tasks through the
+  parser): "over 400", "is above", "bigger than", "under 150", "below", "no more than", "150 or more", "exactly",
+  "isn't"; dates with "before", "after", "on or after", "on or before", "since"; "count" on its own is COUNT(*)
+  ("select shift and the count", "having count over 10"); a list without commas splits where a call or a case
+  starts ("select shift count star"); a table said right before its own column is qualified ("sum of defects
+  quantity" gives SUM(defects.qty)); a whole case is one argument ("sum of case when shift is night then 1 else 0
+  end"); "lag quantity over ..." without "of"; "x" for times; "sort by" for order by. "Over" stays the window
+  keyword unless a number follows it or it is inside a condition. A phrase with no clause keyword is only taken
+  as a new column when every word in it is accounted for, so a misheard stray phrase no longer lands in SELECT.
 - **Steps** for CTEs: "name it ranked" turns the query so far into `WITH ranked AS (...)` and the next query reads
   from it. That is how top-per-group and the fan-out task are built.
 - **Commands** (whole utterances): tables, columns of lots, results (first rows read out), compare (how the rows
@@ -216,28 +230,35 @@ activity; typed mode closes the loop at the keyboard and measures whether the vo
   time, how many are waiting to be typed, and a table of best voice and typed score per task.
 - **SQL first**: the language mix defaults to SQL, and a phone whose saved mix was still "both" is switched to SQL
   once (Settings, Sessions switches Python back in). Python content is unchanged.
-- **Voice**: every fixed sentence of the loop is pre-recorded, including row counts from 0 to 200, the table and
-  column summaries, and the echoes and results heard when a task is built the way its model answer says it, so that
-  path needs no on-phone voice. Other echoes are generated on the phone (or use the phone's voice).
-- Tests: 542 unit tests (the clause parser, the loop with real SQLite, every task's spoken solution, typed
-  queue, scoring and scoreboard, Build sessions, the settings change). The browser smoke test builds a task by voice
-  in headless Chrome, checks the query and rows on screen, then types it in typed mode and checks the scoreboard
-  (59 checks, all passing).
+- **Voice** (1,891 clips, 23 MB): every fixed sentence of the loop is pre-recorded, including row counts from 0 to
+  200, the table and column summaries, and the echoes and results heard when a task is built the way its model
+  answer says it, so that path needs no on-phone voice. Other echoes are generated on the phone (or use the phone's
+  voice).
+- Tests: 558 unit tests (the clause parser, everyday wording, unfinished clauses, the loop with real SQLite, every
+  task's spoken solution, typed queue, scoring and scoreboard, Build sessions, the settings change). The browser
+  smoke test builds a task by voice in headless Chrome with everyday wording and a pause mid-clause, checks the
+  query and rows on screen, then types it in typed mode and checks the scoreboard (60 checks, all passing).
 
 ## What to test on the phone
 
 Current round (build loop and typed mode), parked or at home:
 
-1. Open the app, tap Reload if Home offers it. Settings, Voice quality, Download all drill audio (the new
-   recordings are about 4 MB).
-2. Home, Start Build. Listen to the first task and say "from lots". Then say the rest one clause at a time. Try
-   "tables", "columns of lots", "results", "compare", "undo", "hint" and "show me" along the way.
+The step-by-step version is the "Start here" section of the phone test plan doc,
+https://claude.ai/artifact/DsFEAS5iWzduvBqN3wT7E5.
+
+1. Open the app, tap Reload if Home offers it (the bottom of Home shows the commit). Settings, Voice quality,
+   Download all drill audio (1,891 sentences, about 23 MB in all, about 9 MB more than the first download).
+2. Home, Start Build. Listen to the first task and say "from lots". Then say the rest one clause at a time, in your
+   own words ("where shift is night and quantity is over 400"). Try "tables", "columns of lots", "results",
+   "compare", "undo", "hint" and "show me" along the way.
 3. Do five tasks. For each, note any clause the app heard wrong: the YOU box shows what the recognizer wrote, and
    the echo says where it put it. Those words become entries in the heard-as list.
-4. Note the wait between the end of your clause and the start of the echo, and whether the echo voice is the same
+4. Pause on purpose in the middle of a long clause (the case task is the fourth or fifth). The app should say "Go
+   on." and take the rest, not report an error. Note if it cuts in while you are still talking.
+5. Note the wait between the end of your clause and the start of the echo, and whether the echo voice is the same
    as the prompt voice. Settings, Build and typed can turn the echo off.
-5. Home, Typed set: type the tasks you just built. Check Progress, Build and typed afterwards.
-6. Send back: the misheard clauses, the echo wait, and whether one-clause-at-a-time felt like writing the query.
+6. Home, Typed set: type the tasks you just built. Check Progress, Build and typed afterwards.
+7. Send back: the misheard clauses, the echo wait, and whether one-clause-at-a-time felt like writing the query.
 
 Earlier round (neural voice, pacing, voice editor): the phone test plan doc,
 https://claude.ai/artifact/DsFEAS5iWzduvBqN3wT7E5 (setup, Parked voice and pacing, the car, the voice editor, what
@@ -277,6 +298,15 @@ to send back, pass criteria). Earlier milestone checks:
 - Build has only been run with typed and scripted transcripts. How Chrome's recognizer writes clause words (sum
   and some, where and wear, group by and group buy) is the main unknown; a starter list of those is handled, and
   phone testing will add to it.
+- Listening for a clause ends at the recognizer's first finished phrase, so a thinking pause mid-clause hands the
+  turn to the app. It now answers "Go on." instead of an error, but it still speaks for about a second, and words
+  said over it are lost. If that happens often on the phone, the fix is a longer wait before a clause counts as
+  finished (a setting, not built yet).
+- "Sum of quantity times unit cost" is read as SUM(qty) * unit_cost, which is what the words say; SQLite runs it
+  without an error and the rows don't match. Say "sum of open paren quantity times unit cost close paren". The
+  cheat sheet and that task's hints say so.
+- A second comparison needs its column again, as in SQL: "quantity less than 100 or more than 400" is a syntax
+  error by design; say "or quantity more than 400".
 - Build is Parked only: spec section 12 keeps exact code out of Drive, and that rule was not changed. The loop
   itself never needs the screen, so opening it in Drive is a one-line change if Joshua decides to.
 - The echo of each clause is new text, so on the phone it is generated by the on-phone voice (speed on the Fold 7

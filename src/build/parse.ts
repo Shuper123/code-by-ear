@@ -74,7 +74,10 @@ export function replaceDates(text: string, year: number): string {
 const FILLER = /^(?:(?:okay|ok|um|uh|so|and then|then|now|next|please|alright)\s+)+/i
 const APPEND = /^(?:also|add|plus|and also)\s+/i
 const ALIAS_STOP = new Set(['comma', 'from', 'where', 'group', 'order', 'having', 'limit', 'join', 'left', 'inner', 'on', 'and', 'or',
-  'then', 'when', 'else', 'end', 'over', 'descending', 'ascending', 'desc', 'asc', 'using', 'select', 'quote'])
+  'then', 'when', 'else', 'end', 'over', 'descending', 'ascending', 'desc', 'asc', 'using', 'select', 'quote', 'case', 'zzofzz'])
+
+/** After an alias, a word followed by one of these starts the next column rather than continuing the name. */
+const CALL_NEXT = new Set(['zzofzz', 'star', 'distinct'])
 
 /** "sum of", "count of", "lag of": the "of" is marked so the argument is read here (it can be a name with
  * dots, a group in parentheses or another call), not closed after one word by the dictation parser. */
@@ -89,6 +92,7 @@ const HEARD_AS: [RegExp, string][] = [
   [/\border(?:ed)? (?:buy|bye|bi)\b|\bordered by\b/gi, 'order by'],
   [/\bpartition(?:ed)? (?:buy|bye|bi)\b|\bpartitioned by\b/gi, 'partition by'],
   [/\bjoined\b/gi, 'join'],
+  [/\bsort(?:ed)? by\b/gi, 'order by'],
   [/^(?:wear|ware|were|we're)\b/i, 'where'],
   [/^(?:selects|selected|collect)\b/i, 'select'],
   [/\bcount (?:start|store|stars)\b/gi, 'count star'],
@@ -96,6 +100,41 @@ const HEARD_AS: [RegExp, string][] = [
   [/\b(?:leg|lack) of\b/gi, 'lag of'],
   [/\b(open|close|left|right) (?:parentheses|parenthesis|parens|parent|paran|perrin|baron)\b/gi, '$1 paren'],
   [/([a-z_])\.([a-z_])/gi, '$1 dot $2'], // "defects.quantity" written with the dot
+]
+
+/** A number as speech recognition writes it: digits, or number words. */
+const NUM_WORD = '(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million)'
+const NUMBER = `(?:\\d[\\d,]*(?:\\.\\d+)?|${NUM_WORD}(?:[ -](?:and )?${NUM_WORD})*)`
+const DATE_LIT = 'quote \\d{4}-\\d\\d-\\d\\d unquote'
+const BE = '(?:is |are |was |were )?'
+const cmp = (source: string) => new RegExp(source, 'gi')
+
+/**
+ * Everyday ways to compare, turned into the phrases the parser knows: "over 400", "is under 150",
+ * "150 or more", "no more than 10", "before March 1st". "Over" stays the window keyword unless a number
+ * follows it. Runs after dates are found. Phone testing will add to this list.
+ */
+const COMPARISONS: [RegExp, string][] = [
+  [/\b(?:isn't|aren't|wasn't)\b/gi, 'is not'],
+  [/\bdoesn't equal\b/gi, 'does not equal'],
+  [/\b((?:greater|less) than or equal)(?! to)\b/gi, '$1 to'],
+  [cmp(`\\b${BE}(?:equal to |equals )?(${NUMBER}|${DATE_LIT}) or (?:more|greater|higher|above|over|bigger|larger|later)\\b(?! than)`), 'at least $1'],
+  [cmp(`\\b${BE}(?:equal to |equals )?(${NUMBER}|${DATE_LIT}) or (?:less|fewer|lower|below|under|smaller|earlier)\\b(?! than)`), 'at most $1'],
+  [cmp(`\\b${BE}(?:no|not) (?:more|greater|bigger|larger|higher) than\\b`), 'at most'],
+  [cmp(`\\b${BE}(?:no|not) (?:less|fewer|smaller|lower) than\\b`), 'at least'],
+  [cmp(`\\b${BE}(?:bigger|larger|higher) than\\b`), 'greater than'],
+  [cmp(`\\b${BE}(?:smaller|lower) than\\b`), 'less than'],
+  [cmp(`\\b(?:is |are |was |were )fewer than\\b`), 'less than'],
+  [cmp(`(?<!\\bas )\\b${BE}above\\b`), 'greater than'],
+  [cmp(`(?<!\\bas )\\b${BE}(?:below|under)\\b`), 'less than'],
+  [cmp(`\\b(?:is |are |was |were )over\\b`), 'greater than'],
+  [cmp(`\\bover (?=${NUMBER}\\b)`), 'greater than '],
+  [cmp(`\\b${BE}exactly\\b`), 'equals'],
+  [cmp(`\\b${BE}on or after (?=${DATE_LIT})`), 'at least '],
+  [cmp(`\\b${BE}on or before (?=${DATE_LIT})`), 'at most '],
+  [cmp(`\\b${BE}(?:before|earlier than|prior to) (?=${DATE_LIT})`), 'less than '],
+  [cmp(`\\b${BE}(?:after|later than) (?=${DATE_LIT})`), 'greater than '],
+  [cmp(`\\b${BE}since (?=${DATE_LIT})`), 'at least '],
 ]
 
 interface Prepared {
@@ -112,11 +151,15 @@ function prepare(utterance: string, year: number): Prepared {
   for (const [heard, meant] of HEARD_AS) {
     text = meant ? text.replace(heard, meant) : text.replace(heard, (m) => (/ not /i.test(m) ? 'is not null' : 'is null'))
   }
-  text = replaceDates(text, year)
+  text = replaceDates(text, year).replace(/\s+/g, ' ').trim()
+  for (const [said, meant] of COMPARISONS) text = text.replace(said, meant)
+  text = text
     .replace(/,(?=\s|$)/g, ' comma ')
     .replace(/\b(?:count|number) of (?:all )?(?:the )?rows\b|\bcount (?:all )?(?:the )?rows\b/gi, 'count star')
     .replace(/\bselect (?:all the columns|all columns|everything|all)\b/gi, 'select star')
-    .replace(/\s[x×]\s(?=\d)/g, ' times ')
+    // "times" written as a symbol: always for the sign, for the letter only next to a number
+    .replace(/\s×\s/g, ' times ')
+    .replace(/\sx\s(?=\d)|(?<=\d)\sx\s/gi, ' times ')
     .replace(OF_CALL, `$1 ${OF}`)
     .replace(/\s+/g, ' ')
     .trim()
@@ -132,6 +175,8 @@ function aliasesIn(text: string): string[] {
     const alias: string[] = []
     for (let j = i + 1; j < words.length && alias.length < 4; j++) {
       if (ALIAS_STOP.has(words[j])) break
+      // "as total average of quantity", "as total count star": the next column has started
+      if (CALL_NEXT.has(words[j + 1] ?? '') && alias.length) break
       alias.push(words[j])
     }
     if (alias.length) out.push(alias.join('_'))
@@ -190,6 +235,8 @@ function matchParen(toks: Tok[], open: number): number {
 const AGG = new Set(['COUNT', 'SUM', 'AVG', 'MIN', 'MAX'])
 const NO_ARG = new Set(['ROW_NUMBER', 'RANK', 'DENSE_RANK'])
 const MORE_ARGS = new Set(['ROUND', 'COALESCE', 'LAG', 'LEAD', 'IFNULL', 'NULLIF', 'SUBSTR'])
+/** Called without "of" as well: "lag quantity over order by lot id". */
+const NO_OF = new Set(['LAG', 'LEAD'])
 const COMPARE = new Set(['=', '!=', '<>', '<', '>', '<=', '>='])
 
 interface Ctx {
@@ -209,6 +256,8 @@ function funcName(toks: Tok[], i: number): string | null {
   return null
 }
 
+const COUNT_STAR = (): Tok[] => [kw('COUNT'), punct('('), { kind: 'op', text: '*' }, punct(')')]
+
 function strTok(text: string): Tok {
   return { kind: 'str', text: `'${text.replace(/'/g, "''")}'` }
 }
@@ -224,6 +273,15 @@ function readArg(toks: Tok[], i: number, ctx: Ctx): { toks: Tok[]; next: number 
     const close = matchParen(toks, j)
     out.push(t, ...fixFunctions(toks.slice(j + 1, close), ctx), punct(')'))
     return { toks: out, next: Math.min(close + 1, toks.length) }
+  }
+  if (isKw(t, 'CASE')) {
+    // "sum of case when shift equals night then 1 else 0 end": the whole case is the argument
+    let open = 0
+    for (let k = j; k < toks.length; k++) {
+      if (isKw(toks[k], 'CASE')) open++
+      else if (isKw(toks[k], 'END') && --open === 0) return { toks: [...out, ...fixFunctions(toks.slice(j, k + 1), ctx)], next: k + 1 }
+    }
+    return null // cut by a pause: read again when the rest arrives
   }
   const call = readCall(toks, j, ctx)
   if (call) return { toks: [...out, ...call.toks], next: call.next }
@@ -256,9 +314,15 @@ function readCall(toks: Tok[], i: number, ctx: Ctx): { toks: Tok[]; next: number
   let j = i + 1
   const saidOf = isOf(nxt)
   if (saidOf) j++
-  else if (!AGG.has(fn)) return null
+  else if (!AGG.has(fn) && !NO_OF.has(fn)) return null
   const arg = readArg(toks, j, ctx)
-  if (!arg) return saidOf ? { toks: [kw(fn), punct('('), punct(')')], next: j } : null
+  if (!arg) {
+    // "sum of" (pause) "quantity", or a case still open: left as it is until the rest arrives
+    if (j >= toks.length || isKw(toks[j], 'CASE')) return fn === 'COUNT' && !saidOf && j >= toks.length ? { toks: COUNT_STAR(), next: j } : null
+    if (saidOf) return { toks: [kw(fn), punct('('), punct(')')], next: j }
+    // "count" on its own counts rows: "select shift, count as n", "having count greater than 10"
+    return fn === 'COUNT' ? { toks: COUNT_STAR(), next: j } : null
+  }
   // "sum of open paren a times b close paren": the spoken parentheses are the call's own
   const grouped = isPunct(arg.toks[0], '(') && matchParen(arg.toks, 0) === arg.toks.length - 1
   const call = grouped ? [kw(fn), ...arg.toks.slice(0, -1)] : [kw(fn), punct('('), ...arg.toks]
@@ -284,6 +348,20 @@ function aliasKeywords(toks: Tok[], ids: Set<string>): Tok[] {
     if (AGG.has(t.text) && next && (next.kind === 'name' || isKw(next, 'DISTINCT') || (next.kind === 'op' && next.text === '*'))) return t
     return { kind: 'name', text: lower(t.text) }
   })
+}
+
+/** "sum of defects quantity" -> defects.qty: a table said right before one of its own columns. */
+function qualify(toks: Tok[], schema: BuildSchema): Tok[] {
+  const out: Tok[] = []
+  toks.forEach((t, i) => {
+    out.push(t)
+    const next = toks[i + 1]
+    if (t.kind !== 'name' || !isName(next) || isPunct(toks[i + 2], '.') || isPunct(toks[i - 1], '.')) return
+    if (isKw(toks[i - 1], 'FROM', 'JOIN', 'INNER JOIN', 'LEFT JOIN', 'AS')) return
+    const table = schema.tables.find((x) => lower(x.name) === lower(t.text))
+    if (table?.columns.some((c) => lower(c) === lower(next.text))) out.push(punct('.'))
+  })
+  return out
 }
 
 function fixFunctions(toks: Tok[], ctx: Ctx): Tok[] {
@@ -420,7 +498,7 @@ function fixStrings(toks: Tok[], ctx: Ctx): Tok[] {
       const said = words.join(' ')
       const value = canonValue(said, column, ctx.schema)
       // one word that sounds like a column and matches no stored value is that column ("quantity over unit costs")
-      const isColumn = j === i + 1 && !!t.said && value === said
+      const isColumn = j === i + 1 && !!t.said && value === said && ctx.cols.has(lower(t.text))
       expect = false
       if (!isColumn) {
         out.push(strTok(value))
@@ -458,10 +536,20 @@ function splitItems(toks: Tok[], ctx: Ctx): Tok[][] {
       if (isKw(t, 'AND')) between = false
       const column = (x: Tok | undefined) => !!x && x.kind === 'name' && ctx.cols.has(lower(x.text))
       const startsColumn = column(t) || (isName(t) && isPunct(toks[i + 1], '.'))
-      if (cur.length && !isPunct(prev, '.') && ((column(prev) && startsColumn) || (isKw(prev, 'DESC', 'ASC') && !isKw(t, 'DESC', 'ASC')))) {
+      // "select shift count star", "select machine id sum of quantity": no comma said before a call either
+      const startsCall = t.kind === 'kw' && SQL_FUNCS.has(t.text) && (isPunct(toks[i + 1], '(') || isPunct(toks[i + 1], '()'))
+      // after "as total", a call can only be the next column: "sum of quantity as total average of quantity"
+      const aliased = isName(prev) && cur.some((x) => isKw(x, 'AS'))
+      const endsValue = column(prev) || isPunct(prev, ')') || isPunct(prev, '()') || (aliased && startsCall)
+      if (cur.length && !isPunct(prev, '.') && ((endsValue && (startsColumn || startsCall)) || (isKw(prev, 'DESC', 'ASC') && !isKw(t, 'DESC', 'ASC')))) {
         items.push([t])
         return
       }
+    }
+    // "select machine id case when ...": a case right after a column starts the next column
+    if (depth === 0 && cases === 1 && isKw(t, 'CASE') && cur.length && prev && prev.kind === 'name' && ctx.cols.has(lower(prev.text)) && !isPunct(toks[i - 2], '.')) {
+      items.push([t])
+      return
     }
     cur.push(t)
   })
@@ -550,8 +638,9 @@ function dangling(toks: Tok[]): boolean {
   const prev = toks[toks.length - 2]
   if (!t) return false
   if (t.kind === 'op') return !(t.text === '*' && (!prev || isPunct(prev, '(') || isPunct(prev, ',') || isPunct(prev, '.')))
-  if (isPunct(t, '.')) return true
-  return isKw(t, 'AND', 'OR', 'NOT', 'BETWEEN', 'IN', 'LIKE', 'WHEN', 'THEN', 'ELSE', 'AS', 'CASE', 'OVER', 'PARTITION BY', 'IS', 'ON')
+  if (isPunct(t, '.') || isPunct(t, '(') || isPunct(t, ',')) return true
+  if (t.kind === 'kw' && SQL_FUNCS.has(t.text)) return true // "sum of" (pause) "quantity"
+  return isKw(t, 'AND', 'OR', 'NOT', 'BETWEEN', 'IN', 'LIKE', 'WHEN', 'THEN', 'ELSE', 'AS', 'CASE', 'OVER', 'PARTITION BY', 'IS', 'ON', 'DISTINCT')
 }
 
 const openCase = (toks: Tok[]) => toks.filter((t) => isKw(t, 'CASE')).length > toks.filter((t) => isKw(t, 'END')).length
@@ -569,6 +658,9 @@ function windowAtEnd(item: Tok[]): { open: number; hasOrder: boolean } | null {
   }
   return null
 }
+
+/** A window that stops right after "partition by" or "order by": the rest is still to come. */
+const hangingWindow = (item: Tok[]) => isPunct(item[item.length - 1], ')') && isKw(item[item.length - 2], 'PARTITION BY', 'ORDER BY')
 
 /** Put the rest of a window ("partition by ...", "order by ... as r") inside the parentheses that end the column. */
 function intoWindow(item: Tok[], more: Tok[]): Tok[] {
@@ -592,10 +684,17 @@ export function applyUtterance(prev: Frame, utterance: string, schema: BuildSche
   const vocab = [...new Set([...schemaNames(schema), ...frameNames(prev), ...aliasesIn(text)])]
   const doc = dictate(emptyDoc(), text, 'sql', vocab)
   const ids = new Set(vocab.map(lower))
-  const toks = aliasKeywords(
-    doc.lines.flatMap((l) => l.toks).filter((t) => !(t.kind === 'name' && lower(t.text) === 'the')),
-    new Set([...frameNames(prev), ...aliasesIn(text)].map(lower)),
-  )
+  const toks = qualify(
+    aliasKeywords(
+      doc.lines.flatMap((l) => l.toks).filter((t) => !(t.kind === 'name' && lower(t.text) === 'the')),
+      new Set([...frameNames(prev), ...aliasesIn(text)].map(lower)),
+    ),
+    schema,
+  ).map((t, i, all): Tok => {
+    // "quantity x unit cost": times, written as the letter (unless the query has something named x)
+    const operand = (o: Tok | undefined) => !!o && (o.kind === 'name' || o.kind === 'num' || isPunct(o, ')') || isPunct(o, '('))
+    return isName(t, 'x') && !ids.has('x') && operand(all[i - 1]) && operand(all[i + 1]) && !isPunct(all[i - 1], '(') ? { kind: 'op', text: '*' } : t
+  })
   const f = cloneFrame(prev)
   const q = f.main
   const ctx: Ctx = {
@@ -615,7 +714,8 @@ export function applyUtterance(prev: Frame, utterance: string, schema: BuildSche
       .filter((x) => !(x.kind === 'name' && x.text === OF))
       // "end" heard as "and" right before a name: "... else large and as size"
       .map((x, i, all) => (isKw(x, 'AND') && isKw(all[i + 1], 'AS') ? kw('END') : x))
-  const cond = (t: Tok[]) => fixStrings(fixIs(fixIn(calls(t))), ctx)
+  // a condition has no windows, so "over" in one is a comparison: "where quantity over" (pause) "400"
+  const cond = (t: Tok[]) => fixStrings(fixIs(fixIn(calls(t.map((x): Tok => (isKw(x, 'OVER') ? { kind: 'op', text: '>' } : x))))), ctx)
   const listOf = (t: Tok[]) => splitItems(fixStrings(fixIs(fixIn(fixWindows(calls(t)))), ctx), ctx)
   const addTo = (key: ClauseKey, items: Tok[][]) => {
     if (key === 'groupBy') q.groupBy.push(...items)
@@ -627,7 +727,7 @@ export function applyUtterance(prev: Frame, utterance: string, schema: BuildSche
   /** Carry on with the column said last: its alias, the rest of its case, more of its expression. */
   const continueColumn = (more: Tok[]) => {
     const item = q.select[q.select.length - 1]
-    const w = isKw(more[0], 'PARTITION BY') ? windowAtEnd(item) : null
+    const w = isKw(more[0], 'PARTITION BY') || hangingWindow(item) ? windowAtEnd(item) : null
     if (w) windowOpen = true
     q.select.splice(q.select.length - 1, 1, ...listOf(w ? intoWindow(item, more) : [...item, ...more]).map(fixAlias))
     mark('select')
@@ -753,9 +853,11 @@ export function applyUtterance(prev: Frame, utterance: string, schema: BuildSche
         const rest = comma ? seg.toks.slice(1) : seg.toks
         if (!rest.length) break
         if (!comma && segIndex === 0) {
-          // the rest of a condition the recognizer cut in two: "where quantity greater than" (pause) "400"
-          const key = f.last === 'where' || f.last === 'having' ? f.last : null
-          if (key && (dangling(q[key]) || startsMidway(rest[0]))) {
+          // the rest of a condition the recognizer cut in two: "where quantity greater than" (pause) "400".
+          // A condition left unfinished earlier takes it even if another clause was said in between.
+          const open = unfinishedClause(f)
+          const key = open === 'where' || open === 'having' ? open : f.last === 'where' || f.last === 'having' ? f.last : null
+          if (key && (cut(q[key]) || startsMidway(rest[0]))) {
             q[key] = cond([...q[key], ...rest])
             mark(key)
             break
@@ -768,20 +870,47 @@ export function applyUtterance(prev: Frame, utterance: string, schema: BuildSche
           }
           // the rest of the last column: its alias, more of its case, its window, the other side of an operator
           const item = q.select[q.select.length - 1]
-          if (f.last === 'select' && item && (isKw(rest[0], 'AS', 'WHEN', 'THEN', 'ELSE', 'END', 'PARTITION BY', 'OVER') || startsMidway(rest[0]) || dangling(item) || openCase(item))) {
+          if (f.last === 'select' && item && (isKw(rest[0], 'AS', 'WHEN', 'THEN', 'ELSE', 'END', 'PARTITION BY', 'OVER') || startsMidway(rest[0]) || dangling(item) || openCase(item) || hangingWindow(item))) {
             continueColumn(rest)
             break
           }
         }
-        // an expression on its own is a new column; it has to mention something real
-        const real = rest.some((t) => t.kind === 'num' || (t.kind === 'op' && t.text === '*') || (t.kind === 'kw' && SQL_FUNCS.has(t.text)) || isKw(t, 'CASE') || (t.kind === 'name' && ctx.ids.has(lower(t.text))))
+        // an expression on its own is a new column. It has to name something real (a name that only sounds
+        // close doesn't count), and every word in it has to be accounted for, so a stray phrase adds nothing.
+        const real = rest.some((t) => (t.kind === 'op' && t.text === '*') || (t.kind === 'kw' && SQL_FUNCS.has(t.text)) || isKw(t, 'CASE') || (t.kind === 'name' && !t.said && ctx.ids.has(lower(t.text))))
         if (!real) break
-        addTo(comma && f.last && LIST_KEYS.includes(f.last) ? f.last : 'select', listOf(rest))
+        const items = listOf(rest)
+        const stray = items.some((item) => fixAlias(item).some((t, k, all) => t.kind === 'name' && !ctx.ids.has(lower(t.text)) && !isKw(all[k - 1], 'AS') && !isPunct(all[k - 1], '.')))
+        if (stray) break
+        addTo(comma && f.last && LIST_KEYS.includes(f.last) ? f.last : 'select', items)
       }
     }
   })
   if (!changed.length) return { frame: prev, changed, note: note ?? "I didn't catch a clause in that. Start with select, from, where, group by, order by or limit." }
   return { frame: f, changed, note }
+}
+
+const unbalanced = (toks: Tok[]) => toks.filter((t) => isPunct(t, '(')).length > toks.filter((t) => isPunct(t, ')')).length
+const openBetween = (toks: Tok[]) => {
+  const at = toks.map((t) => isKw(t, 'BETWEEN')).lastIndexOf(true)
+  return at >= 0 && !toks.slice(at).some((t) => isKw(t, 'AND'))
+}
+const cut = (toks: Tok[]) => toks.length > 0 && (openCase(toks) || dangling(toks) || unbalanced(toks) || openBetween(toks) || hangingWindow(toks))
+
+/**
+ * The clause a pause left unfinished, if there is one: a case with no end, an operator with nothing after
+ * it, a parenthesis not closed, a between with no "and". Running it would only report an error the
+ * speaker didn't make, so the build loop waits for the rest instead.
+ */
+export function unfinishedClause(f: Frame): ClauseKey | null {
+  const q = f.main
+  if (q.select.some(cut)) return 'select'
+  if (q.joins.some((j) => cut(j.on))) return 'join'
+  if (cut(q.where)) return 'where'
+  if (q.groupBy.some(cut)) return 'groupBy'
+  if (cut(q.having)) return 'having'
+  if (q.orderBy.some(cut)) return 'orderBy'
+  return null
 }
 
 /** "name it ranked": the query so far becomes a named step, and the next query reads from it. */

@@ -330,6 +330,11 @@ input[type='range'] {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
+/* a status next to a card title reads as a sentence, not a label */
+.step .pill {
+  text-transform: none;
+  letter-spacing: 0;
+}
 
 /* Drive session: dark, one full-screen Pause target, no code shown */
 .drive {

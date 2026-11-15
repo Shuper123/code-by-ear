@@ -366,20 +366,28 @@ async def main():
 
             # ---------- Build loop (SQL): spoken clauses land in their slots, real SQLite runs after every step ----------
             await page.goto(URL, wait_until="networkidle")
-            steps = ["from lots", "where shift equals night and quantity greater than 400", "HOLD-BUILD", "select lot id, quantity"]
+            # said the everyday way, with a pause in the middle of the where clause
+            steps = ["from the lots table", "where the shift is night and", "HOLD-OPEN", "the quantity is over 400", "HOLD-BUILD", "select lot id quantity"]
             await page.evaluate("(src) => { window.__script = (0, eval)(src) }",
                                 "(() => { window.__gate = ''; const q = " + json.dumps(steps) + "; return (last) => {"
                                 "if (!q.length) return null;"
                                 "if (q[0].startsWith('HOLD-')) { if (window.__gate !== q[0]) return null; q.shift(); }"
                                 "return q.shift() } })()")
             await page.get_by_text("Start Build").click()
+            await page.wait_for_function("window.__said.includes('Go on.')", timeout=60000)
+            await page.wait_for_function("document.body.innerText.includes('not finished, keep going')", timeout=10000)
+            lines = await page.evaluate("[...document.querySelectorAll('.build-line')].map(e => e.innerText)")
+            check(lines == ["SELECT *", "FROM lots", "WHERE shift = 'night' AND"] and await page.locator(".ed-error").count() == 0
+                  and not any("Error" in s for s in await page.evaluate("window.__said")),
+                  f"half a clause is not run or called an error: the app says Go on and waits ({lines[-1]})")
+            await page.evaluate("window.__gate = 'HOLD-OPEN'")
             await page.wait_for_function("window.__said.some(s => s.includes('13 rows.'))", timeout=60000)
             await page.wait_for_function("document.querySelectorAll('.build-line').length === 3", timeout=10000)
             said = await page.evaluate("window.__said")
             check(any(s.startswith("Build session, SQL.") for s in said) and any("Build. Which night shift lots" in s for s in said),
                   "Start Build opens a Build session on the first task")
             check("From lots. 120 rows." in said and "Where shift equals night and quantity greater than 400. 13 rows." in said,
-                  "each clause is echoed with the row count the database returned")
+                  "each clause is echoed with the row count the database returned, everyday wording included (is over 400)")
             lines = await page.evaluate("[...document.querySelectorAll('.build-line')].map(e => e.innerText)")
             check(lines == ["SELECT *", "FROM lots", "WHERE shift = 'night' AND qty > 400"], f"the query shows on screen as it is built ({lines})")
             check(await page.locator("table.rows tbody tr").count() == 8 and "13 rows" in await page.inner_text("body"),

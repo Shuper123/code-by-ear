@@ -175,6 +175,57 @@ describe('the build loop', () => {
     expect(s.store.attempts[0].score).toBe(0)
   })
 
+  it('half a clause is not run and not called an error: the app says "Go on" and waits for the rest', async () => {
+    const s = run('sql-s5-build-001', say('from lots', 'select case when quantity less than 150 then small', 'when quantity at most 300 then medium', 'else large', 'end as size, count star', 'group by size'))
+    await s.done
+    const i = s.said.indexOf('From lots. 120 rows.')
+    expect(s.said.slice(i + 1, i + 6)).toEqual([
+      'Go on.',
+      'Go on.',
+      'Go on.',
+      'Select case when quantity less than 150 then small when quantity at most 300 then medium else large end as size, count star. 1 row.',
+      "Group by size. 3 rows. That's a match.",
+    ])
+    expect(s.said.some((x) => x.includes('Error'))).toBe(false)
+    expect(s.store.attempts[0]).toMatchObject({ score: 3, gradedBy: 'auto' })
+  })
+
+  it('while a clause is unfinished nothing runs: the app says which clause, and results and compare say so too', async () => {
+    const s = run('sql-s2-build-001', say('from lots', 'where shift equals night and', 'select lot id, quantity', 'results', 'compare', 'undo', 'undo', 'where shift equals night and', 'select lot id, quantity', 'quantity over 400'))
+    await s.done
+    const i = s.said.indexOf('From lots. 120 rows.')
+    expect(s.said.slice(i + 1, i + 10)).toEqual([
+      'Go on.',
+      "Select lot id, quantity. The where clause isn't finished.",
+      "The where clause isn't finished. Say the rest of it, or say undo.",
+      "The where clause isn't finished. Say the rest of it, or say undo.",
+      "Undone. The where clause isn't finished.",
+      'Undone. 120 rows.',
+      'Go on.',
+      "Select lot id, quantity. The where clause isn't finished.",
+      "Where shift equals night and quantity greater than 400. 13 rows. That's a match.",
+    ])
+    expect(s.engine.view.detail.build?.matched).toBe(true)
+  })
+
+  it('the screen says a clause is unfinished instead of showing an error', async () => {
+    const s = run('sql-s2-build-001', say('from lots', 'where quantity greater than'))
+    await s.done
+    expect(s.engine.view.detail.build).toMatchObject({ status: 'not finished, keep going', lines: [{ text: 'SELECT *' }, { text: 'FROM lots' }, { text: 'WHERE qty >', changed: true }] })
+    expect(s.engine.view.detail.build?.error).toBeUndefined()
+    expect(s.engine.view.detail.build?.result).toBeUndefined()
+  })
+
+  it('everyday wording reaches the same match as the model wording', async () => {
+    const s = run('sql-s2-build-001', say('from the lots table', 'where the shift is night and the quantity is over 400', 'select the lot id and the quantity'))
+    await s.done
+    expect(s.said).toContain('Where shift equals night and quantity greater than 400. 13 rows.')
+    expect(s.said).toContain("Select lot id, quantity. 13 rows. That's a match.")
+    const c = run('sql-s3-build-003', say('from lots', 'group by part id', 'select part id count', 'having the count is over ten'))
+    await c.done
+    expect(c.said).toContain("Having count star greater than 10. 5 rows. That's a match.")
+  })
+
   it('remove and start over', async () => {
     const s = run(TOP3, say('from lots', 'where shift equals night', 'remove where', 'start over', 'from lots', 'undo'))
     await s.done

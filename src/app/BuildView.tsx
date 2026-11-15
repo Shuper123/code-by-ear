@@ -81,6 +81,7 @@ const HOW: [string, string][] = [
   ['left join parts on parts dot part id equals lots dot part id', 'LEFT JOIN parts ON parts.part_id = lots.part_id'],
   ['where shift equals night and quantity greater than 400', "WHERE shift = 'night' AND qty > 400"],
   ['where shift is null', 'WHERE shift IS NULL'],
+  ['at least / at most / not equal to / over 400 / under 150', '>= / <= / != / > 400 / < 150'],
   ['where produced on between February 1st 2026 and February 28th 2026', "BETWEEN '2026-02-01' AND '2026-02-28'"],
   ['where category in cosmetic comma structural', "IN ('cosmetic', 'structural')"],
   ['select machine id, sum of quantity as total', 'SELECT machine_id, SUM(qty) AS total'],
@@ -91,11 +92,13 @@ const HOW: [string, string][] = [
   ['limit 3', 'LIMIT 3'],
   ['rank over partition by machine id order by quantity descending as r', 'RANK() OVER (PARTITION BY machine_id ORDER BY qty DESC) AS r'],
   ['case when quantity less than 150 then small else large end as size', "CASE WHEN qty < 150 THEN 'small' ELSE 'large' END AS size"],
-  ['open paren ... close paren', 'a subquery, or grouping in arithmetic'],
+  ['sum of open paren quantity times unit cost close paren', 'SUM(qty * unit_cost): say the parentheses when a function takes more than one name'],
+  ['open paren select ... close paren', 'a subquery'],
 ]
 const FIX: [string, string][] = [
   ['say a clause again', 'replaces it'],
   ['and ... / comma ...', 'adds to the clause you said last'],
+  ['a pause in the middle of a clause', 'the app says "Go on" and waits for the rest'],
   ['undo / redo', 'one step back or forward'],
   ['remove where (or order by, limit, join ...)', 'drops that clause'],
   ['name it ranked', 'saves the query so far as a step; the next query reads from it'],

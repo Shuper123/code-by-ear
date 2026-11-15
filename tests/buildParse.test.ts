@@ -3,7 +3,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { missingPiece, rowsPhrase, sayError, sqlShape } from '../src/build/feedback'
 import { emptyFrame, renderFrame, sayClause, sayDate, sayFrame, type Frame } from '../src/build/frame'
-import { applyUtterance, canonValue, nameStep, parseBuildCommand, removeClause, replaceDates, type BuildSchema } from '../src/build/parse'
+import { applyUtterance, canonValue, nameStep, parseBuildCommand, removeClause, replaceDates, unfinishedClause, type BuildSchema } from '../src/build/parse'
 import { loadBuildSchema } from '../src/build/schema'
 import { nodeRunSql } from './nodeRunners'
 
@@ -74,6 +74,16 @@ describe('clauses land in their slots', () => {
     expect(r.note).toMatch(/didn't catch a clause/)
     expect(build(['descending']).note).toBe("There's no order by yet.")
     expect(build(['on lot id']).note).toMatch(/no join/)
+  })
+  it('a stray phrase adds nothing: every word has to be accounted for, and a near miss is not enough', () => {
+    for (const stray of ['top three', '400', 'hint', 'quality', 'lot id please', 'what was that']) {
+      const r = build(['from lots', 'select lot id', stray])
+      expect(r.sql, stray).toBe('SELECT lot_id\nFROM lots')
+      expect(r.note, stray).toMatch(/didn't catch a clause/)
+    }
+    // but real columns, values inside an expression and a new name after "as" are all fine
+    expect(sql('from lots', 'select lot id', 'quantity as amount')).toContain('SELECT lot_id, qty AS amount')
+    expect(sql('from lots', 'select lot id', 'case when shift equals night then 1 else 0 end as late')).toContain("CASE WHEN shift = 'night' THEN 1 ELSE 0 END AS late")
   })
 })
 
@@ -147,6 +157,86 @@ describe('the punctuation is typed for you', () => {
       'SELECT machine_id, SUM(qty) AS total_quantity\nFROM lots\nGROUP BY machine_id\nORDER BY total_quantity DESC',
     )
     expect(sql('from lots', 'select part id, count star as count', 'group by part id', 'order by count descending')).toContain('ORDER BY count DESC')
+  })
+})
+
+describe('everyday ways to say it', () => {
+  const where = (said: string) => sql('from lots', `where ${said}`).split('\n')[2]
+  it('comparisons: over, above, under, below, bigger than, no more than, or more', () => {
+    expect(where('quantity over 400')).toBe('WHERE qty > 400')
+    expect(where('the quantity is over four hundred')).toBe('WHERE qty > 400')
+    expect(where('quantity is above 400')).toBe('WHERE qty > 400')
+    expect(where('quantity is bigger than 400')).toBe('WHERE qty > 400')
+    expect(where('quantity under 150')).toBe('WHERE qty < 150')
+    expect(where('quantity is below 150')).toBe('WHERE qty < 150')
+    expect(where('quantity is fewer than 150')).toBe('WHERE qty < 150')
+    expect(where('quantity is no more than 150')).toBe('WHERE qty <= 150')
+    expect(where('quantity is not less than 150')).toBe('WHERE qty >= 150')
+    expect(where('quantity is 150 or more')).toBe('WHERE qty >= 150')
+    expect(where('quantity is 150 or less')).toBe('WHERE qty <= 150')
+    expect(where('quantity is exactly 400')).toBe('WHERE qty = 400')
+    expect(where("quantity isn't 400")).toBe('WHERE qty != 400')
+    expect(where("shift isn't null")).toBe('WHERE shift IS NOT NULL')
+    expect(where('quantity greater than or equal 400')).toBe('WHERE qty >= 400')
+    expect(where('quantity is above open paren select average of quantity from lots close paren')).toBe('WHERE qty > (SELECT AVG(qty) FROM lots)')
+  })
+  it('"or more" is left alone when it starts a second comparison', () => {
+    // SQL needs the column again here; SQLite says so
+    expect(where('quantity less than 100 or more than 400')).toBe('WHERE qty < 100 OR > 400')
+    expect(where('quantity less than 100 or quantity more than 400')).toBe('WHERE qty < 100 OR qty > 400')
+  })
+  it('dates: before, after, on or after, on or before, since', () => {
+    expect(where('produced on is before March 1st 2026')).toBe("WHERE produced_on < '2026-03-01'")
+    expect(where('produced on after January 31st')).toBe("WHERE produced_on > '2026-01-31'")
+    expect(where('produced on is on or after February 1st and produced on is on or before February 28th')).toBe(
+      "WHERE produced_on >= '2026-02-01' AND produced_on <= '2026-02-28'",
+    )
+    expect(where('produced on since March 1st')).toBe("WHERE produced_on >= '2026-03-01'")
+  })
+  it('"over" is still the window keyword, and a name can still be called under', () => {
+    expect(sql('from lots', 'select sum of quantity over order by lot id as running total')).toContain('SUM(qty) OVER (ORDER BY lot_id) AS running_total')
+    expect(sql('from lots', 'select lot id, quantity as under')).toContain('SELECT lot_id, qty AS under')
+    // in a condition there are no windows, even when the pause falls right after it
+    expect(sql('from lots', 'where quantity over', '400')).toContain('WHERE qty > 400')
+    expect(sql('from lots', 'group by part id', 'having count over 10')).toContain('HAVING COUNT(*) > 10')
+  })
+  it('count on its own counts rows', () => {
+    expect(sql('from lots', 'select the count')).toBe('SELECT COUNT(*)\nFROM lots')
+    expect(sql('from lots', 'group by shift', 'select shift and the count')).toContain('SELECT shift, COUNT(*)')
+    expect(sql('from lots', 'select count as n')).toContain('SELECT COUNT(*) AS n')
+    expect(sql('from lots', 'group by part id', 'having the count is greater than ten', 'order by count descending')).toContain('HAVING COUNT(*) > 10\nORDER BY COUNT(*) DESC')
+    // unless the query has a column of that name
+    expect(sql('from lots', 'group by machine id', 'select machine id, count star as count', 'order by count descending')).toContain('ORDER BY count DESC')
+  })
+  it('a list without commas: a call or a case after a column starts the next one', () => {
+    expect(sql('from lots', 'select shift count star')).toContain('SELECT shift, COUNT(*)')
+    expect(sql('from lots', 'select machine id sum of quantity as total average of quantity')).toContain('SELECT machine_id, SUM(qty) AS total, AVG(qty)')
+    expect(sql('from lots', 'select machine id sum of quantity as total count star as lots made')).toContain('SELECT machine_id, SUM(qty) AS total, COUNT(*) AS lots_made')
+    expect(sql('from lots', 'select lot id case when quantity over 300 then big else small end as size')).toContain(
+      "SELECT lot_id, CASE WHEN qty > 300 THEN 'big' ELSE 'small' END AS size",
+    )
+    // names of several words still hold together
+    expect(sql('from lots', 'select machine id, count star as lot count, sum of quantity as total quantity')).toContain('COUNT(*) AS lot_count, SUM(qty) AS total_quantity')
+  })
+  it('a table said right before its own column is that table\'s column', () => {
+    expect(sql('from defects', 'join lots using lot id', 'select sum of defects quantity')).toContain('SELECT SUM(defects.qty)')
+    expect(sql('from defects', 'join lots using lot id', 'where lots quantity over 400')).toContain('WHERE lots.qty > 400')
+    expect(sql('from defects join lots using lot id')).toBe('SELECT *\nFROM defects\nJOIN lots USING (lot_id)')
+  })
+  it('a case is a whole argument, lag works without "of", "x" is times, "sort by" is order by', () => {
+    expect(sql('from lots', 'select 100.0 x sum of case when shift is night then one else zero end divided by count star')).toContain(
+      "SELECT 100.0 * SUM(CASE WHEN shift = 'night' THEN 1 ELSE 0 END) / COUNT(*)",
+    )
+    expect(sql('from lots', 'select 100 times average of case when shift is night then 1.0 else 0 end as pct')).toContain(
+      "SELECT 100 * AVG(CASE WHEN shift = 'night' THEN 1.0 ELSE 0 END) AS pct",
+    )
+    expect(sql('from lots', 'select lot id, lag quantity over order by lot id as previous')).toContain('LAG(qty) OVER (ORDER BY lot_id) AS previous')
+    expect(sql('from lots join parts using part id', 'select sum of open paren quantity x unit cost close paren')).toContain('SELECT SUM(qty * unit_cost)')
+    expect(sql('from lots', 'select quantity as x', 'order by x descending')).toContain('ORDER BY x DESC')
+    expect(sql('from lots', 'sort by quantity descending')).toContain('ORDER BY qty DESC')
+  })
+  it('a word that only sounds like a table is a value, so the answer is no rows, not a wrong name', () => {
+    expect(where('shift is missing')).toBe("WHERE shift = 'missing'")
   })
 })
 
@@ -231,6 +321,52 @@ describe('a clause cut in two by a pause is put back together', () => {
       'SELECT lot_id, RANK() OVER (PARTITION BY machine_id ORDER BY qty DESC) AS r',
     )
     expect(sql('from lots', 'select sum of quantity times', '2')).toContain('SELECT SUM(qty) * 2')
+    expect(sql('from lots', 'select lot id, rank over partition by', 'machine id order by quantity descending as r')).toContain(
+      'SELECT lot_id, RANK() OVER (PARTITION BY machine_id ORDER BY qty DESC) AS r',
+    )
+    expect(sql('from lots', 'select lot id, sum of quantity over order by', 'lot id as running total')).toContain(
+      'SELECT lot_id, SUM(qty) OVER (ORDER BY lot_id) AS running_total',
+    )
+  })
+  it('a call: its argument, or the rest of the case inside it', () => {
+    expect(sql('from lots', 'select sum of', 'quantity')).toBe('SELECT SUM(qty)\nFROM lots')
+    expect(sql('from lots', 'select count of', 'distinct part id')).toBe('SELECT COUNT(DISTINCT part_id)\nFROM lots')
+    expect(sql('from lots', 'select machine id, 100.0 times sum of case when shift equals night then 1', 'else 0 end divided by count star')).toContain(
+      "SELECT machine_id, 100.0 * SUM(CASE WHEN shift = 'night' THEN 1 ELSE 0 END) / COUNT(*)",
+    )
+    expect(sql('from lots', 'select machine id, 100.0 times sum of', 'open paren case when shift equals night then 1 else 0 end close paren', 'divided by count star')).toContain(
+      "SELECT machine_id, 100.0 * SUM(CASE WHEN shift = 'night' THEN 1 ELSE 0 END) / COUNT(*)",
+    )
+    expect(sql('from lots', 'where produced on between February 1st 2026', 'and February 28th 2026')).toContain("BETWEEN '2026-02-01' AND '2026-02-28'")
+    expect(sql('from lots', 'where quantity greater than open paren select average of quantity from lots', 'close paren')).toContain(
+      'WHERE qty > (SELECT AVG(qty) FROM lots)',
+    )
+    // a condition left unfinished takes the rest even when another clause was said in between
+    expect(sql('from lots', 'where shift equals night and', 'select lot id', 'quantity greater than 400')).toBe(
+      "SELECT lot_id\nFROM lots\nWHERE shift = 'night' AND qty > 400",
+    )
+  })
+  it('knows which clause is still unfinished, so it is not run as if it were a mistake', () => {
+    const open = (...steps: string[]) => unfinishedClause(build(steps).frame)
+    expect(open('from lots', 'where quantity greater than')).toBe('where')
+    expect(open('from lots', 'where shift equals night and')).toBe('where')
+    expect(open('from lots', 'where produced on between February 1st 2026')).toBe('where')
+    expect(open('from lots', 'where quantity greater than open paren select average of quantity from lots')).toBe('where')
+    expect(open('from lots', 'select case when quantity less than 150 then small')).toBe('select')
+    expect(open('from lots', 'select case when quantity less than 150 then small', 'else large')).toBe('select')
+    expect(open('from lots', 'select sum of')).toBe('select')
+    expect(open('from lots', 'select lot id, rank over partition by')).toBe('select')
+    expect(open('from lots', 'select sum of quantity as')).toBe('select')
+    expect(open('from defects', 'join lots on defects dot lot id equals')).toBe('join')
+    expect(open('from lots', 'group by part id', 'having count star greater than')).toBe('having')
+    // finished ones
+    expect(open('from lots')).toBeNull()
+    expect(open('from lots', 'select star')).toBeNull()
+    expect(open('from lots', 'select count star, lots dot star')).toBeNull()
+    expect(open('from lots', 'where quantity greater than', '400')).toBeNull()
+    expect(open('from lots', 'select case when quantity less than 150 then small', 'else large', 'end as size')).toBeNull()
+    expect(open('from lots', 'where produced on between February 1st 2026 and February 28th 2026', 'order by quantity descending')).toBeNull()
+    expect(open('from lots', 'select lot id, rank over partition by machine id order by quantity descending as r')).toBeNull()
   })
   it('but a finished window with a name is left alone', () => {
     expect(sql('from lots', 'select lot id, rank over partition by machine id as r', 'order by lot id')).toBe(

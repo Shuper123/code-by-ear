@@ -3,8 +3,8 @@
 // came back: the row count, SQLite's own error, or a match with the answer. Mistakes get fixed out loud
 // ("undo", "remove where", say the clause again). Rules and a real database only; no AI.
 import { missingPiece, rowsPhrase, sayCompare, sayError, sayResults } from '../build/feedback'
-import { emptyFrame, isEmptyFrame, isRunnable, renderFrame, sayClause, sayFrame, sayName, type Frame } from '../build/frame'
-import { applyUtterance, nameStep, parseBuildCommand, removeClause, type Applied, type Changed } from '../build/parse'
+import { emptyFrame, isEmptyFrame, isRunnable, renderFrame, sayClause, sayFrame, sayName, type ClauseKey, type Frame } from '../build/frame'
+import { applyUtterance, nameStep, parseBuildCommand, removeClause, unfinishedClause, type Applied, type Changed } from '../build/parse'
 import { loadBuildSchema, sayColumns, sayTables } from '../build/schema'
 import { snapshotOf } from '../build/view'
 import type { Drill } from '../data/types'
@@ -17,6 +17,16 @@ import type { Runners } from './sketch'
 
 /** Session commands that stay live while building. */
 export const BUILD_COMMANDS: readonly Command[] = ['repeat', 'hint', 'skip', 'idk', 'answer', 'read_back', 'done', 'pause', 'stop', 'wait']
+
+/** Said when a pause cut a clause short and a later step changed a different clause. */
+const NOT_FINISHED: Partial<Record<ClauseKey, string>> = {
+  select: "The select clause isn't finished.",
+  join: "The join condition isn't finished.",
+  where: "The where clause isn't finished.",
+  groupBy: "The group by clause isn't finished.",
+  having: "The having clause isn't finished.",
+  orderBy: "The order by clause isn't finished.",
+}
 
 export function buildPrompt(d: Drill): string {
   return `Build. ${d.prompt_spoken}`
@@ -63,17 +73,20 @@ export function makeBuildHook(runners: Runners, opts: BuildOptions = {}): TypeHo
       let run = null as SqlRunResult | null
       let cmp = null as CompareResult | null
       let changed: Changed[] = []
+      // the clause a pause cut short, if any: the query isn't run until it is finished
+      let open = null as ClauseKey | null
       let steps = 0
       let ownHints = 0
       let silent = 0
       let pending: string | null = first
 
-      const show = (status?: string) => ctx.show({ build: snapshotOf(frame, changed, run, cmp, steps, status) })
+      const show = () => ctx.show({ build: snapshotOf(frame, changed, run, cmp, steps, open ? 'not finished, keep going' : undefined) })
 
       const execute = async () => {
         run = null
         cmp = null
-        if (!isRunnable(frame)) return
+        open = unfinishedClause(frame)
+        if (open || !isRunnable(frame)) return
         run = await runners.runSql(d.dataset, renderFrame(frame))
         if (run.ok && ref.ok) cmp = compareRows(run, ref, !!d.order_matters)
       }
@@ -105,6 +118,12 @@ export function makeBuildHook(runners: Runners, opts: BuildOptions = {}): TypeHo
         steps++
         await execute()
         show()
+        if (open) {
+          // half a clause ("select case when quantity less than 150 then small"): no echo, no error, just wait
+          const mine = changed.some((c) => c.key === open)
+          await ctx.say([mine ? '' : echoOf(changed), next.note ?? (mine ? 'Go on.' : NOT_FINISHED[open])].filter(Boolean).join(' '))
+          return false
+        }
         const lead = [echoOf(changed), resultLine()].filter(Boolean).join(' ')
         if (cmp?.equal) {
           const score: Score = ctx.hints + ownHints > 0 ? 2 : 3
@@ -122,8 +141,11 @@ export function makeBuildHook(runners: Runners, opts: BuildOptions = {}): TypeHo
         changed = []
         await execute()
         show()
-        await ctx.say([word, resultLine()].filter(Boolean).join(' '))
+        await ctx.say([word, open ? NOT_FINISHED[open] : resultLine()].filter(Boolean).join(' '))
       }
+
+      /** Why there is nothing to read out or compare yet. */
+      const nothingYet = () => (open ? `${NOT_FINISHED[open]} Say the rest of it, or say undo.` : "There's nothing to run yet. Start with from and a table.")
 
       const hint = async () => {
         const authored = d.hints_spoken ?? []
@@ -158,9 +180,9 @@ export function makeBuildHook(runners: Runners, opts: BuildOptions = {}): TypeHo
           } else if (cmd.t === 'readBack') {
             await ctx.say(sayFrame(frame))
           } else if (cmd.t === 'results') {
-            await ctx.say(run ? sayResults(run) : "There's nothing to run yet. Start with from and a table.")
+            await ctx.say(run ? sayResults(run) : nothingYet())
           } else if (cmd.t === 'compare' || cmd.t === 'done') {
-            if (!run) await ctx.say("There's nothing to run yet. Start with from and a table.")
+            if (!run) await ctx.say(nothingYet())
             else if (!run.ok) await ctx.say(`Error. ${sayError(run.error)}`)
             else if (cmp) await ctx.say(cmd.t === 'done' ? `Not a match yet. ${sayCompare(cmp)} Keep going, or say show me.` : sayCompare(cmp))
             else await ctx.say(rowsPhrase(run.rows.length))
@@ -195,7 +217,7 @@ export function makeBuildHook(runners: Runners, opts: BuildOptions = {}): TypeHo
                 await ctx.record(ctx.hints + ownHints > 0 ? 2 : 3, 'auto', renderFrame(frame))
                 return 'done'
               }
-              await ctx.say(['Removed.', resultLine()].filter(Boolean).join(' '))
+              await ctx.say(['Removed.', open ? NOT_FINISHED[open] : resultLine()].filter(Boolean).join(' '))
             }
           } else if (cmd.t === 'name') {
             if (await commit(nameStep(frame, cmd.name))) return 'done'

@@ -4,7 +4,8 @@
 - Spec: "Code by Ear: Build Plan" doc, https://claude.ai/artifact/CzQVMPkJ4s1w8pv6QvThSM (sections are numbered in
   order: 3 Decisions, 5 Sessions, 6 Grading, 7 Learning engine, 8 Content, 9 Verbal Syntax, 12 Safety and privacy,
   13 Milestones, 14 Testing)
-- Last updated: 2026-11-14, after M4: neural voice, pacing, and the voice editor (Keys mode, edits) deployed
+- Last updated: 2026-11-15, after M4: pauses inside a line of code (after "equals", "then", commas, and variables
+  used again) added to the neural voice, pacing, and voice editor round
 
 ## Milestones
 
@@ -15,7 +16,7 @@
 | M2 AI grading and Sketch | Deployed, waiting for phone test | AI grading, Sketch for SQL and Python, 24 ladders |
 | M3 Verbal Syntax and Dictate | Deployed, waiting for phone test | Parser, edit commands, read-back, Dictate in Parked; 26 ladders |
 | M4 Polish | Deployed, waiting for phone test | Progress, Drills browser, export and import, media buttons spike |
-| After M4 (Joshua's requests) | Deployed, waiting for phone test | Neural voice (Kokoro), pacing, voice editor with Keys mode and plain-English edits |
+| After M4 (Joshua's requests) | Deployed, waiting for phone test | Neural voice (Kokoro), pacing with pauses inside lines, voice editor with Keys mode and plain-English edits |
 
 ## What works
 
@@ -118,6 +119,17 @@ After M4 (requested by Joshua on 2026-11-14)
   ("Three lines.") when the spoken pieces match the code's lines. Drive reads the code twice ("Again.") before the
   question. "repeat line 2" (or "say the last line") replays one line. In Drive, new drills with 3 lines of code or
   fewer come first.
+- **Pauses inside a line** (`src/speech/phrasing.ts`, requested 2026-11-15): each line of code is read in short
+  phrases with a pause between them (Settings, Pacing: "Pause inside a line", 0.4 s; off reads lines straight
+  through): "x equals (pause) 7. Then (pause) x equals (pause) x (pause) plus 3." The pauses go after "equals"
+  (assignments and keyword arguments), after a leading "Then", at commas, in SQL before each clause (from, where,
+  joined to, on, group by, order by, having, limit), and after a Python variable that comes back after the line
+  that defined it. The variables come from the drill's real code (assignment targets, parameters, loop and `as`
+  names), so the app finds them itself; multi-word names (`produced_on`) stay whole, and no pause splits one
+  expression ("stock at key pin", "name dot upper", "nums from index 1"), a list's items ("the list 10, 20, 30")
+  or a date's year. Each phrase but the last is recorded with a trailing comma so it sounds unfinished, and phrase
+  clips have their silence trimmed so the setting is the pause you hear (plus about 0.1 s). A line is still one
+  utterance: if any phrase can't be neural, the whole line uses the phone voice, with the same pauses.
 - **Neural voice** (`src/speech/voice.ts`, `neural.ts`, `kokoro.worker.ts`): Kokoro-82M (Apache-2.0), voice Heart.
   Every fixed sentence (drill prompts, code lines, model answers, hints, the app's own phrases) is pre-rendered at
   build time by `scripts/render_voice.py` into `public/voice/af_heart/<key>.ogg` (Opus, about 36 kbps) with
@@ -145,7 +157,8 @@ After M4 (requested by Joshua on 2026-11-14)
   at the end of line 1", "insert plus one after count", "remove the colon on line 2", "swap lines 2 and 3",
   "move line 4 up" are rules (instant, offline). Anything else starting with an edit word ("make the loop count
   down") goes to Claude, which may make only that change (refused if it changes more than 4 lines).
-- Tests: 440 unit tests (pacing, voice layer with fakes, editor, keys grammar, edits, live checks with real Pyodide
+- Tests: 458 unit tests (pacing and phrasing, voice layer with fakes, a check that every drill sentence, line and
+  phrase has a recording, editor, keys grammar, edits, live checks with real Pyodide
   and sql.js, simulated Dictate sessions in both modes, AI edits with a fake). The browser smoke test now also
   checks a live Python error and its Keys-mode fix, a plain-English edit, a drill spoken entirely from
   pre-recorded clips, and the on-phone voice generating a new sentence (with a local stand-in for Hugging Face).
@@ -210,6 +223,9 @@ to send back, pass criteria). Earlier milestone checks:
   verified, the real model's speed and sound on the Fold 7 are not. WebGPU was not testable headless.
 - Pronunciation of code words by Kokoro (for example "qty", "len", "def") hasn't been heard by a person yet. Odd
   ones can be fixed by rewording that drill's spoken text and re-rendering.
+- Phrase intonation hasn't been heard either: each phrase is its own clip, so a phrase may sound a little clipped
+  or end on a falling note. The trailing comma is meant to keep it level; if it sounds choppy, the pause can be
+  shortened or turned off per phone in Settings, Pacing.
 - Keys mode letters depend on how Android's recognizer writes single letters; plain letter names are the least
   reliable (Talon's or NATO words are safer). Grammar biasing isn't possible in Chrome on Android.
 
@@ -221,6 +237,8 @@ to send back, pass criteria). Earlier milestone checks:
   neural voice (pre-rendered drill audio plus on-phone generation), with the phone's voice as the fallback and a
   Settings switch back to it. Still free and keyless. Recognition is unchanged; an on-device grammar recognizer
   (Vosk) for Keys mode would need his OK.
+- **Pauses inside a line:** a single word variable named `a` counts as a variable only when it isn't the article
+  ("a dictionary"); builtins (`len`, `print`, `key`) never get the variable pause.
 - **Pacing:** code speed and pauses are separate settings from speech rate; reading code twice is Drive only
   (Parked shows the code). A number right after a move or backspace in Keys mode is its count ("backspace three");
   say "number three" to type a digit there.

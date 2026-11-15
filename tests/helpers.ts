@@ -32,3 +32,8 @@ export function sayNumbers(s: string): string {
     return d ? `${head} point ${d.split('').map((c) => ONES[Number(c)]).join(' ')}` : head
   })
 }
+
+/** What a fake voice "said": a line of code spoken in phrases is joined back into one string. */
+export function heard(text: string | string[]): string {
+  return Array.isArray(text) ? text.join(' ') : text
+}

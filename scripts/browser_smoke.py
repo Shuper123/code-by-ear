@@ -216,7 +216,7 @@ async def main():
               const st = tx.objectStore('kv');
               const g = st.get('settings');
               await new Promise(r => g.onsuccess = r);
-              st.put({ ...(g.result || {}), silenceParkedMs: 1500, silenceDriveMs: 1500, voiceEngine: 'phone', linePauseMs: 300 }, 'settings');
+              st.put({ ...(g.result || {}), silenceParkedMs: 1500, silenceDriveMs: 1500, voiceEngine: 'phone', linePauseMs: 300, phrasePauseMs: 100 }, 'settings');
               await new Promise(r => tx.oncomplete = r);
             }""")
             await page.reload(wait_until="networkidle")
@@ -369,9 +369,12 @@ async def main():
             page.on("response", lambda r: voice_hits.append(r.status) if "/voice/af_heart/" in r.url else None)
             await set_settings(page, {"voiceEngine": "neural", "neuralModel": "off"})
             await practice(page, "py-p1-predict-001", "(last) => null", None)
-            await page.wait_for_function("window.__cbeVoiceLog.filter(e => e.engine === 'neural' && e.style === 'code').length >= 3", timeout=90000)
+            await page.wait_for_function("window.__cbeVoiceLog.filter(e => e.engine === 'neural' && e.style === 'phrase').length >= 3", timeout=90000)
             log = await page.evaluate("window.__cbeVoiceLog")
             check(all(e["engine"] == "neural" for e in log), f"the drill was spoken entirely from pre-recorded audio ({len(log)} utterances)")
+            lines = [e["text"] for e in log if e["style"] == "phrase"]
+            check(lines[:2] == ["x equals, 7.", "Then, x equals, x, plus 3."],
+                  f"each line of code is read in phrases with pauses between them ({lines[:2]})")
             check(any(e["text"] == "Python. Three lines." for e in log), "the code is announced with its line count")
             check(len(voice_hits) >= 5 and all(h in (200, 206, 304) for h in voice_hits),
                   f"pre-recorded clips load ({len(voice_hits)} fetched, statuses {sorted(set(voice_hits))})")

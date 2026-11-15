@@ -24,7 +24,32 @@ import soundfile as sf
 ROOT = Path(__file__).resolve().parent.parent
 CODE_SPEED = 0.85  # lines of code are rendered slower; the app plays them at rate / CODE_SPEED
 LEAD_S, TAIL_S = 0.15, 0.10  # silence around each clip, so a waking Bluetooth link clips silence, not words
+# Phrases inside a line of code play back to back with a set pause between them, so their own silence is
+# trimmed tight; the app's phrase pause setting makes the gap. Matches trimSilence and PAD in src/speech/neural.ts.
+PHRASE_LEAD_S, PHRASE_TAIL_S, PHRASE_MARGIN_S = 0.04, 0.04, 0.025
 MODEL = "kokoro-v1.0 fp32"
+
+
+def trim_silence(samples: np.ndarray, sr: int, margin_s: float = PHRASE_MARGIN_S) -> np.ndarray:
+    """Drop the model's own silence at both ends, keeping margin_s of it, with 5 ms fades at the cuts.
+    Silence is any 10 ms stretch more than 40 dB below the loudest one."""
+    frame = max(1, round(sr * 0.01))
+    n = len(samples) // frame
+    if n == 0:
+        return samples
+    rms = np.sqrt(np.mean(samples[: n * frame].reshape(n, frame) ** 2, axis=1))
+    loud = rms.max()
+    if loud == 0:
+        return samples
+    on = np.nonzero(rms >= loud * 0.01)[0]
+    margin = round(margin_s * sr)
+    out = samples[max(0, on[0] * frame - margin): min(len(samples), (on[-1] + 1) * frame + margin)].copy()
+    fade = min(round(sr * 0.005), len(out) // 2)
+    if fade:
+        ramp = np.arange(fade, dtype=np.float32) / fade
+        out[:fade] *= ramp
+        out[-fade:] *= ramp[::-1]
+    return out
 
 
 def main() -> int:
@@ -65,10 +90,13 @@ def main() -> int:
         manifest_path.write_text(json.dumps({**manifest, "clips": clips}, indent=0) + "\n")
 
     for i, t in enumerate(todo, 1):
-        speed = CODE_SPEED if t["style"] == "code" else 1.0
+        speed = 1.0 if t["style"] == "prose" else CODE_SPEED
         samples, sr = kokoro.create(t["text"], voice=args.voice, speed=speed, lang="en-us")
-        samples = np.concatenate([np.zeros(int(LEAD_S * sr), np.float32), samples.astype(np.float32),
-                                  np.zeros(int(TAIL_S * sr), np.float32)])
+        samples = samples.astype(np.float32)
+        lead, tail = LEAD_S, TAIL_S
+        if t["style"] == "phrase":
+            samples, lead, tail = trim_silence(samples, sr), PHRASE_LEAD_S, PHRASE_TAIL_S
+        samples = np.concatenate([np.zeros(int(lead * sr), np.float32), samples, np.zeros(int(tail * sr), np.float32)])
         sf.write(out_dir / f"{t['key']}.ogg", samples, sr, format="OGG", subtype="OPUS")
         ms = round(len(samples) / sr * 1000)
         manifest["clips"][t["key"]] = ms

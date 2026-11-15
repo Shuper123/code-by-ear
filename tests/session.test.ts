@@ -7,7 +7,7 @@ import { SessionEngine, type EngineDeps } from '../src/engine/session'
 import { DEFAULT_SETTINGS, type Settings } from '../src/settings'
 import type { ListenOptions, ListenResult } from '../src/speech/stt'
 import type { Profile } from '../src/storage/db'
-import { loadDrills } from './helpers'
+import { heard, loadDrills } from './helpers'
 
 const drills = loadDrills()
 const L1 = new Set(['predict', 'explain', 'spot_bug', 'plan', 'concept'])
@@ -29,7 +29,8 @@ function harness(script: Script, startMs = Date.UTC(2026, 10, 14, 14, 0, 0), sto
   let listens = 0
   let engine!: SessionEngine
   const deps: EngineDeps = {
-    speak: async (text) => {
+    speak: async (raw) => {
+      const text = heard(raw)
       said.push(text)
       t += Math.max(800, text.split(/\s+/).length * 380)
     },

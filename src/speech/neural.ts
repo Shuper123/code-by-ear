@@ -116,7 +116,41 @@ export const neural = new NeuralEngine()
 ;(globalThis as unknown as { __cbeNeural?: NeuralEngine }).__cbeNeural = neural
 
 /** Float samples to a 16-bit mono WAV file, with a little silence before and after. */
-export function encodeWav(samples: Float32Array, sampleRate: number, leadS = 0.15, tailS = 0.1): Blob {
+/** Drop the model's own silence at both ends (keeping `marginS` of it), for phrase clips that sit close
+ * together. Silence is any 10 ms stretch more than 40 dB below the loudest one. */
+export function trimSilence(samples: Float32Array, sampleRate: number, marginS = 0.025): Float32Array {
+  const frame = Math.max(1, Math.round(sampleRate * 0.01))
+  const frames = Math.ceil(samples.length / frame)
+  const rms = new Float32Array(frames)
+  for (let f = 0; f < frames; f++) {
+    let sum = 0
+    const end = Math.min(samples.length, (f + 1) * frame)
+    for (let i = f * frame; i < end; i++) sum += samples[i] * samples[i]
+    rms[f] = Math.sqrt(sum / Math.max(1, end - f * frame))
+  }
+  const loud = rms.reduce((m, v) => Math.max(m, v), 0)
+  if (loud === 0) return samples
+  const floor = loud * 0.01
+  let first = 0
+  while (first < frames && rms[first] < floor) first++
+  let last = frames - 1
+  while (last > first && rms[last] < floor) last--
+  const margin = Math.round(marginS * sampleRate)
+  const from = Math.max(0, first * frame - margin)
+  const to = Math.min(samples.length, (last + 1) * frame + margin)
+  const out = samples.slice(from, to)
+  const fade = Math.min(Math.round(sampleRate * 0.005), Math.floor(out.length / 2))
+  for (let i = 0; i < fade; i++) {
+    out[i] *= i / fade
+    out[out.length - 1 - i] *= i / fade
+  }
+  return out
+}
+
+/** Silence around a clip: phrases sit close together, everything else gets room for Bluetooth to wake. */
+export const PAD = { normal: { lead: 0.15, tail: 0.1 }, phrase: { lead: 0.04, tail: 0.04 } }
+
+export function encodeWav(samples: Float32Array, sampleRate: number, leadS = PAD.normal.lead, tailS = PAD.normal.tail): Blob {
   const lead = Math.round(leadS * sampleRate)
   const tail = Math.round(tailS * sampleRate)
   const n = lead + samples.length + tail

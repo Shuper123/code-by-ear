@@ -1,5 +1,5 @@
 // Lists every sentence the app speaks that is fixed ahead of time, for the neural voice pre-render:
-// all drill text (prompts, code, model answers, hints, Sketch and Dictate prompts) plus the app's own
+// all drill text (prompts, code lines and their phrases, model answers, hints, Sketch and Dictate prompts) plus the app's own
 // fixed sentences, found in the string literals of the session code.
 // Run: npx vite-node scripts/voice_texts.ts  -> build/voice_texts.json
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
@@ -8,6 +8,7 @@ import { ALL_DRILLS } from '../src/data/drills'
 import { dictatePrompt } from '../src/engine/dictate'
 import { makeSketchHook } from '../src/engine/sketch'
 import { codePieces, lineCountPhrase, sentences, speechKey, type SpeechStyle } from '../src/speech/chunks'
+import { drillSpeech } from '../src/speech/phrasing'
 
 const ROOT = join(import.meta.dirname ?? __dirname, '..')
 const out = new Map<string, { key: string; style: SpeechStyle; text: string }>()
@@ -22,12 +23,8 @@ const sketchWithAi = makeSketchHook({ available: () => true } as any, noRunners 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sketchNoAi = makeSketchHook(null, noRunners as any)
 for (const d of ALL_DRILLS) {
-  add('prose', d.prompt_spoken)
-  add('prose', d.model_answer_spoken)
-  for (const h of d.hints_spoken ?? []) add('prose', h)
-  const pieces = codePieces(d.code_spoken)
-  for (const p of pieces) add('code', p)
-  add('prose', lineCountPhrase(d.code, pieces) ?? '')
+  for (const x of drillSpeech(d)) add(x.style, x.text)
+  add('prose', lineCountPhrase(d.code, codePieces(d.code_spoken)) ?? '')
   if (d.type === 'dictate') add('prose', dictatePrompt(d))
   if (d.type === 'sketch') {
     add('prose', sketchWithAi.promptText!(d))
@@ -61,4 +58,5 @@ const list = [...out.values()].sort((a, b) => a.key.localeCompare(b.key))
 mkdirSync(join(ROOT, 'build'), { recursive: true })
 writeFileSync(join(ROOT, 'build/voice_texts.json'), JSON.stringify(list, null, 1))
 const chars = list.reduce((s, x) => s + x.text.length, 0)
-console.log(`voice_texts: ${list.length} sentences, ${chars} characters (${list.filter((x) => x.style === 'code').length} code)`)
+const count = (st: SpeechStyle) => list.filter((x) => x.style === st).length
+console.log(`voice_texts: ${list.length} sentences, ${chars} characters (${count('code')} code lines, ${count('phrase')} code phrases)`)

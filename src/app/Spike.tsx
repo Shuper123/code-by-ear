@@ -259,7 +259,7 @@ export function Spike() {
       `AI call: ${ai || 'not run'} · key saved: ${hasKey}`,
       `Voice: ${s.voiceEngine} (${s.neuralVoice}), on-phone model ${s.neuralModel}: ${neuralStatusText(neural.status)}`,
       `Voice: last utterance used ${voice.lastEngine ?? 'nothing yet'}; last voice error: ${voice.lastError ?? 'none'}`,
-      `Pacing: code speed ${s.codeSpeed}, line pause ${s.linePauseMs} ms, code twice in Drive ${s.codeTwiceDrive}`,
+      `Pacing: code speed ${s.codeSpeed}, line pause ${s.linePauseMs} ms, phrase pause ${s.phrasePauseMs} ms, code twice in Drive ${s.codeTwiceDrive}`,
       `Buttons setting: ${s.mediaButtons}`,
       ...buttonReportLines(),
       '--- event log (ms since screen opened) ---',

@@ -3,16 +3,20 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS, type Settings } from '../src/settings'
 import { speechKey } from '../src/speech/chunks'
-import { encodeWav } from '../src/speech/neural'
-import { packUrl, VoicePlayer, type AudioLike, type VoiceDeps, type VoiceManifest } from '../src/speech/voice'
+import { encodeWav, trimSilence } from '../src/speech/neural'
+import { drillSpeech } from '../src/speech/phrasing'
+import { PACK, packUrl, VoicePlayer, type AudioLike, type VoiceDeps, type VoiceManifest } from '../src/speech/voice'
+import { loadDrills } from './helpers'
 
-function setup(opts: { settings?: Partial<Settings>; packed?: [string, 'prose' | 'code'][]; neural?: boolean; playFails?: boolean } = {}) {
+function setup(opts: { settings?: Partial<Settings>; packed?: [string, 'prose' | 'code' | 'phrase'][]; neural?: boolean; playFails?: boolean } = {}) {
   const pack: VoiceManifest = { voice: 'af_heart', model: 'test', codeSpeed: 0.85, clips: {} }
   for (const [t, style] of opts.packed ?? []) pack.clips[speechKey(style, t)] = 1000
   const played: { src: string; rate: number }[] = []
   const phone: { text: string; rate: number }[] = []
   const cache = new Map<string, Blob>()
   const generated: string[] = []
+  const gaps: number[] = []
+  const order: string[] = [] // plays and gaps in the order they happened
   let t = 1_000_000
   let blobs = 0
   const audio: AudioLike = {
@@ -20,6 +24,7 @@ function setup(opts: { settings?: Partial<Settings>; packed?: [string, 'prose' |
     async play() {
       if (opts.playFails) throw new Error('NotAllowedError')
       played.push({ src: this.src, rate: this.playbackRate })
+      order.push(`play ${this.src}`)
       t += 1000
       queueMicrotask(() => this.onended?.())
     },
@@ -37,13 +42,21 @@ function setup(opts: { settings?: Partial<Settings>; packed?: [string, 'prose' |
       return { samples: new Float32Array(2400), sampleRate: 24000 }
     },
     neuralReady: () => !!opts.neural,
-    phoneSpeak: async (text, rate) => void phone.push({ text, rate }),
+    phoneSpeak: async (text, rate) => {
+      phone.push({ text, rate })
+      order.push(`phone ${text}`)
+    },
     phoneStop: () => {},
     now: () => (t += 10),
+    sleep: async (ms) => {
+      gaps.push(ms)
+      order.push(`gap ${ms}`)
+      t += ms
+    },
     origin: 'https://example.test/code-by-ear/',
     pack,
   }
-  return { v: new VoicePlayer(deps), played, phone, cache, generated }
+  return { v: new VoicePlayer(deps), played, phone, cache, generated, gaps, order }
 }
 
 describe('voice', () => {
@@ -125,4 +138,58 @@ describe('voice', () => {
     expect(n).toBe(24 + 4 + 24)
     expect(dv.getInt16(44 + 25 * 2, true)).toBe(Math.round(0.5 * 0x7fff))
   })
+
+  it('a line in phrases plays each phrase with the pause between them, at the code rate', async () => {
+    const x = setup({ packed: [['Then,', 'phrase'], ['x equals,', 'phrase'], ['x,', 'phrase'], ['plus 3.', 'phrase']] })
+    await x.v.speak(['Then,', 'x equals,', 'x,', 'plus 3.'], 0.9 * 0.85, undefined, 'phrase', 400)
+    const key = (t: string) => `play ${packUrl('af_heart', speechKey('phrase', t))}`
+    expect(x.order).toEqual(['play blob:1', key('Then,'), 'gap 400', key('x equals,'), 'gap 400', key('x,'), 'gap 400', key('plus 3.')])
+    expect(x.played[1].rate).toBeCloseTo(0.9) // phrases are recorded at the code speed too
+    expect(x.phone).toHaveLength(0)
+  })
+
+  it('one phrase without audio: the whole line uses the phone voice, still with the pauses', async () => {
+    const x = setup({ packed: [['x equals,', 'phrase']] })
+    await x.v.speak(['x equals,', '7.'], 1, undefined, 'phrase', 300)
+    expect(x.order).toEqual(['phone x equals,', 'gap 300', 'phone 7.'])
+    expect(x.played).toHaveLength(0)
+  })
+
+  it('phrases the phone generates are made at the code speed', async () => {
+    const x = setup({ neural: true })
+    await x.v.speak(['n equals,', '0.'], 0.85, undefined, 'phrase', 300)
+    expect(x.generated).toEqual(['n equals,@0.85', '0.@0.85'])
+    expect(x.gaps).toEqual([300])
+  })
+
+  it('stopping during a pause ends the line', async () => {
+    const x = setup({ packed: [['x equals,', 'phrase'], ['7.', 'phrase']] })
+    const ctrl = new AbortController()
+    const v = x.v as unknown as { deps: { sleep: (ms: number) => Promise<void> } }
+    v.deps.sleep = async () => ctrl.abort()
+    await x.v.speak(['x equals,', '7.'], 1, ctrl.signal, 'phrase', 300)
+    expect(x.played.map((p) => p.src)).toEqual(['blob:1', packUrl('af_heart', speechKey('phrase', 'x equals,'))])
+  })
+
+  it('trimSilence keeps the sound and a little margin, and fades the cut edges', () => {
+    const sr = 24000
+    const s = new Float32Array(sr) // 1 s: silence, 0.2 s of tone, silence
+    for (let i = 0.4 * sr; i < 0.6 * sr; i++) s[i] = 0.5 * Math.sin(i / 3)
+    const t = trimSilence(s, sr, 0.025)
+    expect(t.length / sr).toBeGreaterThan(0.2)
+    expect(t.length / sr).toBeLessThan(0.28)
+    expect(Math.abs(t[0])).toBe(0)
+    expect(trimSilence(new Float32Array(100), sr)).toHaveLength(100) // all silence: left alone
+  })
 })
+
+describe('the recorded drill audio', () => {
+  it('covers every sentence, line and phrase the drills speak (run npm run voice after editing drills)', () => {
+    const missing = loadDrills()
+      .flatMap((d) => drillSpeech(d))
+      .filter((x) => PACK.clips[speechKey(x.style, x.text)] === undefined)
+      .map((x) => `${x.style}: ${x.text}`)
+    expect(missing).toEqual([])
+  })
+})
+

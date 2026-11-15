@@ -85,7 +85,7 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
     const s = getSettings()
     const ai = new AiServices()
     const deps: EngineDeps = {
-      speak: (text, rate, signal, style) => voice.speak(text, rate, signal, style),
+      speak: (text, rate, signal, style, gapMs) => voice.speak(text, rate, signal, style, gapMs),
       sleep: (ms, signal) =>
         new Promise<void>((resolve) => {
           const t = setTimeout(resolve, ms)

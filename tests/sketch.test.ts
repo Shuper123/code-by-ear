@@ -8,7 +8,7 @@ import { SessionEngine, type EngineDeps } from '../src/engine/session'
 import { makeSketchHook, type SketchAi } from '../src/engine/sketch'
 import { DEFAULT_SETTINGS } from '../src/settings'
 import type { ListenResult } from '../src/speech/stt'
-import { loadDrills } from './helpers'
+import { heard, loadDrills } from './helpers'
 import { nodeRunners } from './nodeRunners'
 
 const drills = loadDrills()
@@ -24,7 +24,7 @@ function run(drillId: string, answers: Answer[], ai: SketchAi & { grade?: unknow
   const queue = [...answers]
   const deps: EngineDeps = {
     speak: async (text) => {
-      said.push(text)
+      said.push(heard(text))
       t += 2000
     },
     stopSpeaking: () => {},

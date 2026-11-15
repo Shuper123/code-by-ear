@@ -25,6 +25,7 @@ export interface Settings {
   mediaButtons: boolean // M4 spike: headset and steering-wheel buttons through the Media Session API
   codeSpeed: number // lines of code are spoken at this fraction of the normal speed
   linePauseMs: number // silence after each line of code
+  phrasePauseMs: number // silence between the phrases inside a line of code; 0 reads each line straight through
   codeTwiceDrive: boolean // in Drive, read the code twice before the question
   voiceEngine: 'neural' | 'phone' // neural: Kokoro (pre-rendered drill audio, plus on-phone generation if downloaded)
   neuralVoice: string // Kokoro voice ID; the pre-rendered drill audio uses af_heart
@@ -53,6 +54,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mediaButtons: false,
   codeSpeed: 0.85,
   linePauseMs: 900,
+  phrasePauseMs: 400,
   codeTwiceDrive: true,
   voiceEngine: 'neural',
   neuralVoice: 'af_heart',

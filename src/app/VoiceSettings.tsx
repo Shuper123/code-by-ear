@@ -2,8 +2,8 @@
 import { useEffect, useState } from 'preact/hooks'
 import { ALL_DRILLS } from '../data/drills'
 import { updateSettings, type Settings } from '../settings'
-import { codePieces } from '../speech/chunks'
 import { ensureNeural, neural, type NeuralStatus } from '../speech/neural'
+import { codeLines } from '../speech/phrasing'
 import { PACK, packCachedCount, prefetchPack, voice } from '../speech/voice'
 
 export const NEURAL_VOICES: [string, string][] = [
@@ -31,12 +31,21 @@ export function neuralStatusText(st: NeuralStatus): string {
   return `Ready (${st.device === 'webgpu' ? 'on the GPU' : 'on the CPU'}, ${st.dtype === 'fp32' ? 'best quality' : 'smaller model'}), loaded in ${((st.loadMs ?? 0) / 1000).toFixed(1)} s.${speed}`
 }
 
-function NumberRow(props: { label: string; value: number; min: number; max: number; step: number; suffix?: string; onChange: (v: number) => void }) {
+function NumberRow(props: {
+  label: string
+  value: number
+  min: number
+  max: number
+  step: number
+  suffix?: string
+  zero?: string // what to show instead of 0, such as "off"
+  onChange: (v: number) => void
+}) {
   return (
     <label class="field">
       <span>
-        {props.label}: <strong>{props.value}</strong>
-        {props.suffix ?? ''}
+        {props.label}: <strong>{props.value === 0 && props.zero ? props.zero : props.value}</strong>
+        {props.value === 0 && props.zero ? '' : (props.suffix ?? '')}
       </span>
       <input type="range" min={props.min} max={props.max} step={props.step} value={props.value}
         onInput={(e) => props.onChange(Number((e.target as HTMLInputElement).value))} />
@@ -70,8 +79,9 @@ export function VoiceSettings({ s }: { s: Settings }) {
     const d = ALL_DRILLS.find((x) => x.id === 'py-p1-predict-001')!
     const rate = s.rateParked
     await voice.speak('Python. Three lines.', rate)
-    for (const p of codePieces(d.code_spoken)) {
-      await voice.speak(p, rate * s.codeSpeed, undefined, 'code')
+    for (const line of codeLines(d)) {
+      if (s.phrasePauseMs > 0 && line.phrases.length > 1) await voice.speak(line.phrases, rate * s.codeSpeed, undefined, 'phrase', s.phrasePauseMs)
+      else await voice.speak(line.text, rate * s.codeSpeed, undefined, 'code')
       await new Promise((r) => setTimeout(r, s.linePauseMs))
     }
     await voice.speak(d.prompt_spoken, rate)
@@ -139,6 +149,12 @@ export function VoiceSettings({ s }: { s: Settings }) {
           onChange={(v) => void updateSettings({ codeSpeed: Math.round(v * 100) / 100 })} />
         <NumberRow label="Pause after each line of code" value={s.linePauseMs / 1000} min={0.3} max={2.5} step={0.1} suffix=" s"
           onChange={(v) => void updateSettings({ linePauseMs: Math.round(v * 1000) })} />
+        <NumberRow label="Pause inside a line" value={s.phrasePauseMs / 1000} min={0} max={1.5} step={0.05} suffix=" s" zero="off"
+          onChange={(v) => void updateSettings({ phrasePauseMs: Math.round(v * 1000) })} />
+        <p class="faint">
+          Inside a line, the voice pauses after "equals", after "then", at commas, and after a variable that comes back from an
+          earlier line: "x equals, 7. Then, x equals, x, plus 3." Set it to off to hear each line straight through.
+        </p>
         <label class="check">
           <input type="checkbox" checked={s.codeTwiceDrive} onChange={(e) => void updateSettings({ codeTwiceDrive: (e.target as HTMLInputElement).checked })} />
           <span>In Drive, read the code twice before the question</span>

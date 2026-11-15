@@ -8,7 +8,7 @@ import { MemoryStore } from '../src/engine/progress'
 import { SessionEngine, type EngineDeps } from '../src/engine/session'
 import { DEFAULT_SETTINGS } from '../src/settings'
 import type { ListenResult } from '../src/speech/stt'
-import { loadDrills } from './helpers'
+import { heard, loadDrills } from './helpers'
 import { nodeRunners } from './nodeRunners'
 
 const drills = loadDrills()
@@ -23,7 +23,7 @@ function run(drillId: string, answers: Answer[], explain: string | null = null) 
   let engine!: SessionEngine
   const deps: EngineDeps = {
     speak: async (text) => {
-      said.push(text)
+      said.push(heard(text))
       t += 1500
     },
     stopSpeaking: () => {},
@@ -235,7 +235,7 @@ describe('Dictate with the voice editor', () => {
     const answers = ['S E L E C T space star space F R O M space L O T S', 'spell line', 'run it', 'idk']
     let engine!: SessionEngine
     const deps: EngineDeps = {
-      speak: async (text) => void said.push(text),
+      speak: async (text) => void said.push(heard(text)),
       stopSpeaking: () => {},
       listen: () => {
         const text = engine.view.paused ? '' : answers.shift() ?? ''
@@ -268,7 +268,7 @@ describe('Dictate: plain-English edits', () => {
     const store = new MemoryStore()
     const calls: string[] = []
     const deps: EngineDeps = {
-      speak: async (text) => void said.push(text),
+      speak: async (text) => void said.push(heard(text)),
       stopSpeaking: () => {},
       listen: () => {
         const text = engine.view.paused ? '' : queue.shift() ?? ''

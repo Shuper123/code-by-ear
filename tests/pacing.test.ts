@@ -1,28 +1,28 @@
-// Pacing: code is read one line at a time (slower, with pauses), with a line count, twice in Drive,
-// and "repeat line N" replays one line.
+// Pacing: code is read one line at a time (slower, with pauses), each line in short phrases with smaller
+// pauses between them, with a line count, twice in Drive, and "repeat line N" replays one line.
 import { describe, expect, it } from 'vitest'
 import { localDate } from '../src/engine/dates'
 import { MemoryStore } from '../src/engine/progress'
 import { SessionEngine, type EngineDeps } from '../src/engine/session'
 import { codePieces, lineCountPhrase, normalizeSpeech, sentences, speechKey } from '../src/speech/chunks'
 import { parseRepeatLine } from '../src/speech/commands'
-import { DEFAULT_SETTINGS } from '../src/settings'
+import { DEFAULT_SETTINGS, type Settings } from '../src/settings'
 import type { ListenResult } from '../src/speech/stt'
 import { loadDrills } from './helpers'
 
 const drills = loadDrills()
 const TYPES = new Set(['predict', 'explain', 'spot_bug', 'plan', 'concept'])
-type Spoken = { text: string; rate: number; style?: string }
+type Spoken = { text: string | string[]; rate: number; style?: string; gap?: number }
 
-function run(profile: 'drive' | 'parked', drillId: string, answers: string[]) {
+function run(profile: 'drive' | 'parked', drillId: string, answers: string[], settings: Partial<Settings> = {}) {
   let t = Date.UTC(2026, 10, 14, 16)
   const spoken: Spoken[] = []
   const sleeps: number[] = []
   const queue = [...answers]
   let engine!: SessionEngine
   const deps: EngineDeps = {
-    speak: async (text, rate, _signal, style) => {
-      spoken.push({ text, rate, style })
+    speak: async (text, rate, _signal, style, gap) => {
+      spoken.push({ text, rate, style, gap })
       t += 1500
     },
     sleep: async (ms) => {
@@ -43,7 +43,7 @@ function run(profile: 'drive' | 'parked', drillId: string, answers: string[]) {
     store: new MemoryStore(),
     supportedTypes: TYPES,
   }
-  engine = new SessionEngine({ profile, settings: { ...DEFAULT_SETTINGS }, drills, only: [drillId] }, deps)
+  engine = new SessionEngine({ profile, settings: { ...DEFAULT_SETTINGS, ...settings }, drills, only: [drillId] }, deps)
   return { engine, spoken, sleeps, done: engine.run() }
 }
 
@@ -78,39 +78,47 @@ describe('speech pieces', () => {
 })
 
 describe('pacing in sessions', () => {
-  it('Drive reads code line by line, slower, twice, with pauses, then the question', async () => {
+  const PROMPT = drills.find((d) => d.id === 'py-p1-predict-001')!.prompt_spoken
+  const PHRASED = [['x equals,', '7.'], ['Then,', 'x equals,', 'x,', 'plus 3.'], ['Then,', 'print x.']]
+
+  it('Drive reads code line by line in short phrases, slower, twice, with pauses, then the question', async () => {
     const s = run('drive', 'py-p1-predict-001', ['ten'])
     await s.done
     const texts = s.spoken.map((x) => x.text)
     const i = texts.indexOf('Python. Three lines.')
     expect(i).toBeGreaterThanOrEqual(0)
-    expect(texts.slice(i + 1, i + 9)).toEqual([
-      'x equals 7.', 'Then x equals x plus 3.', 'Then print x.', 'Again.',
-      'x equals 7.', 'Then x equals x plus 3.', 'Then print x.', drills.find((d) => d.id === 'py-p1-predict-001')!.prompt_spoken,
-    ])
-    const code = s.spoken.filter((x) => x.style === 'code')
+    expect(texts.slice(i + 1, i + 9)).toEqual([...PHRASED, 'Again.', ...PHRASED, PROMPT])
+    const code = s.spoken.filter((x) => x.style === 'phrase')
     expect(code).toHaveLength(6)
+    expect(code.every((x) => x.gap === DEFAULT_SETTINGS.phrasePauseMs)).toBe(true)
     expect(code[0].rate).toBeCloseTo(DEFAULT_SETTINGS.rateDrive * DEFAULT_SETTINGS.codeSpeed)
     expect(s.sleeps.filter((ms) => ms === DEFAULT_SETTINGS.linePauseMs)).toHaveLength(4)
+  })
+  it('with the phrase pause off, each line is read straight through', async () => {
+    const s = run('drive', 'py-p1-predict-001', ['ten'], { phrasePauseMs: 0 })
+    await s.done
+    const code = s.spoken.filter((x) => x.style === 'code').map((x) => x.text)
+    expect(code).toEqual(['x equals 7.', 'Then x equals x plus 3.', 'Then print x.', 'x equals 7.', 'Then x equals x plus 3.', 'Then print x.'])
   })
   it('Parked reads the code once', async () => {
     const s = run('parked', 'py-p1-predict-001', ['ten', 'yes'])
     await s.done
-    expect(s.spoken.filter((x) => x.style === 'code')).toHaveLength(3)
+    expect(s.spoken.filter((x) => x.style === 'phrase')).toHaveLength(3)
     expect(s.spoken.some((x) => x.text === 'Again.')).toBe(false)
   })
   it('spot the bug announces itself and the line count', async () => {
     const s = run('drive', 'py-p1-bug-001', ['line one'])
     await s.done
     expect(s.spoken.some((x) => x.text === 'Python. Spot the bug. Three lines.')).toBe(true)
-    expect(s.spoken.filter((x) => x.style === 'code')[0].text).toBe('Line 1, count equals the string 5.')
+    expect(s.spoken.filter((x) => x.style === 'phrase')[0].text).toEqual(['Line 1,', 'count equals,', 'the string 5.'])
+    expect(s.engine.view.said).not.toContain('equals,') // the screen shows the line as written
   })
   it('"repeat line 2" replays just that line and asks again', async () => {
     const s = run('drive', 'py-p1-predict-001', ['repeat line two', 'repeat line nine', 'ten'])
     await s.done
-    const texts = s.spoken.map((x) => x.text)
-    const k = texts.lastIndexOf('Then x equals x plus 3.')
-    expect(texts[k + 1]).toBe('There are 3 lines.')
+    const texts = s.spoken.map((x) => JSON.stringify(x.text))
+    const k = texts.lastIndexOf(JSON.stringify(PHRASED[1]))
+    expect(texts[k + 1]).toBe(JSON.stringify('There are 3 lines.'))
     expect(s.engine.view.done).toBe(1)
   })
 })

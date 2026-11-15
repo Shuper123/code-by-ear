@@ -15,7 +15,8 @@ import {
   RATING_COMMANDS,
   type Command,
 } from '../speech/commands'
-import { codePieces, lineCountPhrase, type SpeechStyle } from '../speech/chunks'
+import { lineCountPhrase, type SpeechStyle } from '../speech/chunks'
+import { codeLines, type CodeLine } from '../speech/phrasing'
 import type { EditorSnapshot } from '../verbal/editor'
 import { parseRepeatLine } from '../speech/commands'
 import type { CueName } from '../speech/cues'
@@ -50,7 +51,8 @@ export interface ViewDetail {
 
 export interface EngineDeps {
   /** Speak and resolve when done. `style` 'code' is a line of code (spoken slower, by the caller's rate). */
-  speak(text: string, rate: number, signal: AbortSignal, style?: SpeechStyle): Promise<void>
+  /** An array is one line of code in phrases, with `gapMs` of silence between them. */
+  speak(text: string | string[], rate: number, signal: AbortSignal, style?: SpeechStyle, gapMs?: number): Promise<void>
   /** Wait between lines of code; resolves early on abort. Tests leave it out (no waiting). */
   sleep?(ms: number, signal: AbortSignal): Promise<void>
   /** Called once with the planned drills, so their audio can be fetched ahead. */
@@ -314,15 +316,18 @@ export class SessionEngine {
     this.check()
   }
 
-  /** Lines of code: slower, one at a time, with a pause after each so they can sink in. */
-  private async sayCode(pieces: string[]) {
+  /** Lines of code: slower, one at a time, with a pause after each so they can sink in, and shorter
+   * pauses between the phrases inside a line ("x equals (pause) x (pause) plus 3"). */
+  private async sayCode(lines: CodeLine[]) {
     const s = this.cfg.settings
-    for (const [i, piece] of pieces.entries()) {
+    for (const [i, line] of lines.entries()) {
       this.check()
-      this.update({ phase: 'speaking', said: piece })
-      await this.deps.speak(piece, this.rate * s.codeSpeed, this.ctrl.signal, 'code')
+      this.update({ phase: 'speaking', said: line.text })
+      const rate = this.rate * s.codeSpeed
+      if (s.phrasePauseMs > 0 && line.phrases.length > 1) await this.deps.speak(line.phrases, rate, this.ctrl.signal, 'phrase', s.phrasePauseMs)
+      else await this.deps.speak(line.text, rate, this.ctrl.signal, 'code')
       this.check()
-      await this.wait(i < pieces.length - 1 ? s.linePauseMs : Math.round(s.linePauseMs * 0.6))
+      await this.wait(i < lines.length - 1 ? s.linePauseMs : Math.round(s.linePauseMs * 0.6))
     }
   }
 
@@ -693,30 +698,30 @@ export class SessionEngine {
     const intro: string[] = []
     if (this.lastLang !== d.lang) intro.push(d.lang === 'sql' ? 'SQL.' : 'Python.')
     this.lastLang = d.lang
-    const pieces = override ? [] : codePieces(d.code_spoken)
-    if (!pieces.length) {
+    const lines = override ? [] : codeLines(d)
+    if (!lines.length) {
       intro.push(override ?? d.prompt_spoken)
       await this.say(intro.join(' '))
       return
     }
     if (d.type === 'spot_bug') intro.push('Spot the bug.')
-    const count = lineCountPhrase(d.code, pieces)
+    const count = lineCountPhrase(d.code, lines.map((l) => l.text))
     if (count) intro.push(count)
     if (intro.length) await this.say(intro.join(' '))
-    await this.sayCode(pieces)
+    await this.sayCode(lines)
     if (this.cfg.profile === 'drive' && this.cfg.settings.codeTwiceDrive) {
       await this.say('Again.')
-      await this.sayCode(pieces)
+      await this.sayCode(lines)
     }
     await this.say(d.prompt_spoken)
   }
 
   /** "repeat line 2": just that line of the drill's code. */
   private async repeatLine(d: Drill, n: number) {
-    const pieces = codePieces(d.code_spoken)
-    const i = n === -1 ? pieces.length : n
-    if (i < 1 || i > pieces.length) await this.say(pieces.length === 1 ? 'There is only one line.' : `There are ${pieces.length} lines.`)
-    else await this.sayCode([pieces[i - 1]])
+    const lines = codeLines(d)
+    const i = n === -1 ? lines.length : n
+    if (i < 1 || i > lines.length) await this.say(lines.length === 1 ? 'There is only one line.' : `There are ${lines.length} lines.`)
+    else await this.sayCode([lines[i - 1]])
   }
 
   // ---------- grading ----------

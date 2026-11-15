@@ -1,12 +1,14 @@
 // The app's voice. With the neural voice on, each sentence plays from (1) the pre-rendered drill audio
 // shipped with the app, (2) audio this phone generated before, or (3) the on-phone Kokoro model, in the
 // same voice. If any sentence of an utterance has none of these, the whole utterance uses the phone's
-// own voice, so one utterance never switches voices midway.
+// own voice, so one utterance never switches voices midway. A line of code can be spoken as phrases with
+// short pauses between them; the line still counts as one utterance.
 import manifestJson from '../data/voice_manifest.json'
 import type { Drill } from '../data/types'
 import { getSettings, type Settings } from '../settings'
-import { codePieces, sentences, speechKey, type SpeechStyle } from './chunks'
-import { encodeWav, neural, type GeneratedAudio } from './neural'
+import { sentences, speechKey, type SpeechStyle } from './chunks'
+import { encodeWav, neural, PAD, trimSilence, type GeneratedAudio } from './neural'
+import { drillSpeech } from './phrasing'
 import { speak as phoneSpeak, stopSpeaking as phoneStop } from './tts'
 
 export interface VoiceManifest {
@@ -46,6 +48,8 @@ export interface VoiceDeps {
   phoneSpeak(text: string, rate: number, voiceURI: string | undefined, signal?: AbortSignal): Promise<void>
   phoneStop(): void
   now(): number
+  /** Wait between the phrases of a line; resolves early if the signal aborts. */
+  sleep(ms: number, signal?: AbortSignal): Promise<void>
   origin: string
   /** Which sentences have pre-rendered audio (the build's manifest; tests pass their own). */
   pack: VoiceManifest
@@ -70,6 +74,17 @@ function browserDeps(): VoiceDeps {
     phoneSpeak: (text, rate, voiceURI, signal) => phoneSpeak(text, { rate, voiceURI }, signal),
     phoneStop,
     now: () => Date.now(),
+    sleep: (ms, signal) =>
+      new Promise<void>((resolve) => {
+        if (signal?.aborted) return resolve()
+        const done = () => {
+          clearTimeout(timer)
+          signal?.removeEventListener('abort', done)
+          resolve()
+        }
+        const timer = setTimeout(done, ms)
+        signal?.addEventListener('abort', done)
+      }),
     origin: typeof location !== 'undefined' ? location.href : 'http://localhost/',
     pack: PACK,
   }
@@ -126,8 +141,11 @@ export class VoicePlayer {
   private async urlFor(src: VoiceSource, voice: string): Promise<string | null> {
     if (src.kind !== 'gen') return src.url
     try {
-      const a = await this.deps.generate(src.text, voice, src.style === 'code' ? this.deps.pack.codeSpeed : 1)
-      const blob = encodeWav(a.samples, a.sampleRate)
+      const a = await this.deps.generate(src.text, voice, src.style === 'prose' ? 1 : this.deps.pack.codeSpeed)
+      const blob =
+        src.style === 'phrase'
+          ? encodeWav(trimSilence(a.samples, a.sampleRate), a.sampleRate, PAD.phrase.lead, PAD.phrase.tail)
+          : encodeWav(a.samples, a.sampleRate)
       void this.deps.cachePut(GEN_CACHE, this.genUrl(voice, src.key), blob).catch(() => {})
       return this.deps.objectUrl(blob)
     } catch (e) {
@@ -137,7 +155,7 @@ export class VoicePlayer {
   }
 
   private rateFor(rate: number, style: SpeechStyle): number {
-    const native = style === 'code' ? this.deps.pack.codeSpeed : 1
+    const native = style === 'prose' ? 1 : this.deps.pack.codeSpeed
     return Math.min(2, Math.max(0.5, rate / native))
   }
 
@@ -187,29 +205,46 @@ export class VoicePlayer {
     await this.play(this.silence, 1, signal)
   }
 
-  async speak(text: string, rate: number, signal?: AbortSignal, style: SpeechStyle = 'prose'): Promise<void> {
+  /**
+   * Say `text`. An array is one line of code in phrases, with `gapMs` of silence between them: the whole
+   * line uses one voice, and the next phrase's audio is prepared during each pause.
+   */
+  async speak(text: string | string[], rate: number, signal?: AbortSignal, style: SpeechStyle = 'prose', gapMs = 0): Promise<void> {
     const s = this.deps.settings()
-    const parts = sentences(text)
-    if (!parts.length || signal?.aborted) return
-    const viaPhone = (t: string) => {
-      this.record(t, 'phone', style)
-      return this.deps.phoneSpeak(t, rate, s.voiceURI, signal)
+    const chunks = (Array.isArray(text) ? text : [text]).map((t) => sentences(t)).filter((c) => c.length)
+    if (!chunks.length || signal?.aborted) return
+    const items = chunks.flatMap((c, ci) => c.map((t, j) => ({ text: t, gapAfter: j === c.length - 1 && ci < chunks.length - 1 ? gapMs : 0 })))
+    const whole = items.map((x) => x.text).join(' ')
+    const viaPhone = async (from: number) => {
+      const rest = items.slice(from)
+      this.record(rest.map((x) => x.text).join(' '), 'phone', style)
+      if (from === 0 && typeof text === 'string') return this.deps.phoneSpeak(text, rate, s.voiceURI, signal)
+      let run: string[] = []
+      for (const [k, it] of rest.entries()) {
+        run.push(it.text)
+        if (it.gapAfter === 0 && k < rest.length - 1) continue
+        if (signal?.aborted) return
+        await this.deps.phoneSpeak(run.join(' '), rate, s.voiceURI, signal)
+        run = []
+        if (it.gapAfter > 0) await this.deps.sleep(it.gapAfter, signal)
+      }
     }
-    if (s.voiceEngine !== 'neural') return viaPhone(text)
-    const sources = await Promise.all(parts.map((p) => this.sourceFor(p, style, s.neuralVoice)))
-    if (sources.some((x) => !x)) return viaPhone(text)
-    this.record(text, 'neural', style)
+    if (s.voiceEngine !== 'neural') return viaPhone(0)
+    const sources = await Promise.all(items.map((x) => this.sourceFor(x.text, style, s.neuralVoice)))
+    if (sources.some((x) => !x)) return viaPhone(0)
+    this.record(whole, 'neural', style)
     await this.wake(signal)
     let next: Promise<string | null> | null = null
-    for (let i = 0; i < parts.length; i++) {
+    for (let i = 0; i < items.length; i++) {
       if (signal?.aborted) return
       const url = await (next ?? this.urlFor(sources[i]!, s.neuralVoice))
-      next = i + 1 < parts.length ? this.urlFor(sources[i + 1]!, s.neuralVoice) : null // work ahead while this plays
+      next = i + 1 < items.length ? this.urlFor(sources[i + 1]!, s.neuralVoice) : null // work ahead while this plays
       if (!url || !(await this.play(url, this.rateFor(rate, style), signal))) {
         if (signal?.aborted) return
-        await viaPhone(parts.slice(i).join(' '))
+        await viaPhone(i)
         return
       }
+      if (items[i].gapAfter > 0) await this.deps.sleep(items[i].gapAfter, signal)
     }
   }
 
@@ -224,14 +259,7 @@ export const voice = new VoicePlayer()
 ;(globalThis as unknown as { __cbeVoice?: VoicePlayer }).__cbeVoice = voice
 
 /** Every pre-rendered sentence a drill can speak, so a session can fetch its audio up front. */
-export function drillSentences(d: Drill): { style: SpeechStyle; text: string }[] {
-  const out: { style: SpeechStyle; text: string }[] = []
-  for (const t of [d.prompt_spoken, d.model_answer_spoken, ...(d.hints_spoken ?? [])]) {
-    for (const s of sentences(t ?? '')) out.push({ style: 'prose', text: s })
-  }
-  for (const p of codePieces(d.code_spoken)) for (const s of sentences(p)) out.push({ style: 'code', text: s })
-  return out
-}
+export const drillSentences = drillSpeech
 
 /** Fetch pre-rendered audio into the cache (the service worker keeps it). Returns how many were fetched. */
 export async function prefetchPack(keys: string[], voiceId = PACK.voice, onProgress?: (done: number, total: number) => void): Promise<number> {

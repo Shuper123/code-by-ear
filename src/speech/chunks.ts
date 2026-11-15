@@ -1,7 +1,10 @@
 // How speech is cut into pieces. Shared by the app and the build script that pre-renders the
 // neural voice (scripts/voice_texts.ts), so the same sentence always gets the same audio file.
 
-export type SpeechStyle = 'prose' | 'code'
+// prose: ordinary sentences. code: a whole line of code, read slower. phrase: one phrase of a line of
+// code, read at the code speed with its silence trimmed, so the pauses between phrases are only the
+// ones the settings ask for.
+export type SpeechStyle = 'prose' | 'code' | 'phrase'
 
 export function normalizeSpeech(text: string): string {
   return text.replace(/\s+/g, ' ').trim()

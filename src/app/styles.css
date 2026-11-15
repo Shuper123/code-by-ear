@@ -561,3 +561,84 @@ input[type='range'] {
   color: var(--red, #e5484d);
   font-family: var(--mono, ui-monospace, monospace);
 }
+
+/* ---------- build loop and typed mode ---------- */
+.build-sql {
+  white-space: normal;
+}
+.build-line {
+  white-space: pre-wrap;
+  padding: 1px 6px;
+  border-left: 3px solid transparent;
+  border-radius: 4px;
+}
+.build-line.changed {
+  border-left-color: var(--amber);
+  background: rgba(255, 181, 71, 0.1);
+}
+.rows-wrap {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+table.rows {
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  min-width: 60%;
+}
+table.rows th,
+table.rows td {
+  text-align: left;
+  padding: 4px 10px 4px 0;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+table.rows th {
+  color: var(--dim);
+  font-weight: 600;
+}
+.schema-line {
+  margin: 6px 0;
+  font-size: 0.92rem;
+  word-break: break-word;
+}
+.typed-box {
+  width: 100%;
+  min-height: 9.5em;
+  font-family: var(--mono);
+  font-size: 1rem;
+  line-height: 1.45;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  resize: vertical;
+}
+.typed-box:focus {
+  outline: 2px solid var(--amber);
+  outline-offset: 1px;
+}
+.keys-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+.keys-row button {
+  font-family: var(--mono);
+  font-size: 1rem;
+  min-width: 2.4em;
+  padding: 8px 0;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.typed-ok {
+  color: var(--teal);
+  font-weight: 600;
+}
+.typed-miss {
+  color: var(--amber);
+}

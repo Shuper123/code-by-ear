@@ -1,7 +1,7 @@
 // Tiny history-backed navigation so Android's back gesture returns to Home instead of closing the app.
 import { useEffect, useState } from 'preact/hooks'
 
-export type ScreenName = 'home' | 'spike' | 'settings' | 'session' | 'progress' | 'drills'
+export type ScreenName = 'home' | 'spike' | 'settings' | 'session' | 'progress' | 'drills' | 'typed'
 export interface Route {
   screen: ScreenName
   params?: Record<string, string>

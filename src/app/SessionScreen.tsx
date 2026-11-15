@@ -16,16 +16,18 @@ import { ensureNeural } from '../speech/neural'
 import { prefetchDrills, voice } from '../speech/voice'
 import type { Profile } from '../storage/db'
 import { AiServices } from '../ai/services'
+import { makeBuildHook } from '../engine/build'
 import { makeDictateHook } from '../engine/dictate'
 import { classifySqlError, makeSketchHook, type Runners } from '../engine/sketch'
 import { checkPythonSyntax, loadPython, pythonState, runPythonTests } from '../runtimes/py'
 import { runSql } from '../runtimes/sql'
 import { goBack, navigate } from './nav'
+import { BuildCheatSheet, BuildView, SchemaCard } from './BuildView'
 import { EditorView } from './EditorView'
 import { VerbalCheatSheet } from './VerbalCheatSheet'
 
 /** Drill types this build can run in sessions. */
-export const SUPPORTED_TYPES: ReadonlySet<string> = new Set(['predict', 'explain', 'spot_bug', 'plan', 'concept', 'sketch', 'dictate'])
+export const SUPPORTED_TYPES: ReadonlySet<string> = new Set(['predict', 'explain', 'spot_bug', 'plan', 'concept', 'sketch', 'dictate', 'build'])
 
 export const runners: Runners = {
   runSql: (dataset, sql) => runSql(dataset, sql),
@@ -48,6 +50,7 @@ const TYPE_LABEL: Record<string, string> = {
   concept: 'Concept',
   sketch: 'Sketch',
   dictate: 'Dictate',
+  build: 'Build',
 }
 
 function mmss(ms: number): string {
@@ -75,7 +78,7 @@ function phaseLabel(v: EngineView): string {
   }
 }
 
-export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?: string }) {
+export function SessionScreen({ profile, drillId, focus }: { profile: Profile; drillId?: string; focus?: 'build' }) {
   const [view, setView] = useState<EngineView | null>(null)
   const [now, setNow] = useState(Date.now())
   const engineRef = useRef<SessionEngine | null>(null)
@@ -99,12 +102,16 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
       today: () => localDate(),
       store: idbStore,
       grader: ai,
-      typeHooks: { sketch: makeSketchHook(ai, runners), dictate: makeDictateHook(ai, runners, { startMode: () => getSettings().dictateMode }) },
+      typeHooks: {
+        sketch: makeSketchHook(ai, runners),
+        dictate: makeDictateHook(ai, runners, { startMode: () => getSettings().dictateMode }),
+        build: makeBuildHook(runners, { echo: () => getSettings().buildEcho }),
+      },
       onRateChange: (p, rate) => void updateSettings(p === 'drive' ? { rateDrive: rate } : { rateParked: rate }),
       supportedTypes: SUPPORTED_TYPES,
     }
     const engine = new SessionEngine(
-      { profile, settings: s, drills: ALL_DRILLS, only: drillId ? [drillId] : undefined },
+      { profile, settings: s, drills: ALL_DRILLS, only: drillId ? [drillId] : undefined, focus },
       deps,
     )
     engineRef.current = engine
@@ -146,7 +153,7 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
       voice.stop()
       void releaseWakeLock()
     }
-  }, [profile, drillId])
+  }, [profile, drillId, focus])
 
   const engine = engineRef.current
   if (!view || !engine) return <div class="drive">Starting…</div>
@@ -214,7 +221,9 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
   return (
     <div class="page">
       <div class="topbar">
-        <h1>Parked · {mmss(elapsed)}</h1>
+        <h1>
+          {focus === 'build' ? 'Build' : 'Parked'} · {mmss(elapsed)}
+        </h1>
         <button class="btn" onClick={() => engine.togglePause()}>
           {view.paused ? 'Resume' : 'Pause'}
         </button>
@@ -233,7 +242,7 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
         <div class="card">
           <div class="step">
             {d.lang === 'sql' ? 'SQL' : 'Python'} · {UNIT_NAMES[d.unit]} · {TYPE_LABEL[d.type]}
-            {TYPE_LABEL[d.type] === LEVEL_NAMES[d.level] ? ` · Level ${d.level}` : ` · Level ${d.level} ${LEVEL_NAMES[d.level]}`}
+            {TYPE_LABEL[d.type] === LEVEL_NAMES[d.level] || d.type === 'build' ? ` · Level ${d.level}` : ` · Level ${d.level} ${LEVEL_NAMES[d.level]}`}
           </div>
           {d.code && (
             <div class="code" style={{ marginTop: '8px' }}>
@@ -244,10 +253,11 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
         </div>
       )}
       {view.detail.editor && d && <EditorView ed={view.detail.editor} lang={d.lang} />}
+      {d?.type === 'build' && <BuildView snap={view.detail.build ?? { lines: [], steps: 0 }} />}
       <div class="card">
         <div class="step">You</div>
         <div class="transcript">
-          {view.phase === 'listening' || d?.type === 'dictate' ? view.heard || '…' : view.lastAnswer || view.heard || '…'}
+          {view.phase === 'listening' || d?.type === 'dictate' || d?.type === 'build' ? view.heard || '…' : view.lastAnswer || view.heard || '…'}
         </div>
         {view.phase === 'listening' && /Say go to run it, or redo\.$/.test(view.said) && (
           <div class="row" style={{ marginTop: '10px' }}>
@@ -279,6 +289,24 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
             </button>
           </div>
         )}
+        {d?.type === 'build' && (
+          <div class="row" style={{ marginTop: '10px' }}>
+            {(
+              [
+                ['Undo', 'undo'],
+                ['Read it back', 'read it back'],
+                ['Results', 'results'],
+                ['Compare', 'compare'],
+                ['Tables', 'tables'],
+                ['Show me', 'show me'],
+              ] as const
+            ).map(([label, say]) => (
+              <button class="btn" disabled={view.phase !== 'listening'} onClick={() => engine.injectText(say)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
         <div class="row" style={{ marginTop: '10px' }}>
           <button class="btn teal" disabled={view.phase !== 'listening'} onClick={() => engine.finishAnswer()}>
             Done talking
@@ -307,6 +335,8 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
         </div>
       )}
       {d?.type === 'dictate' && <VerbalCheatSheet lang={d.lang} />}
+      {d?.type === 'build' && <SchemaCard dataset={d.dataset} />}
+      {d?.type === 'build' && <BuildCheatSheet />}
       <div class="card">
         <div class="step">App</div>
         <p>{view.said}</p>

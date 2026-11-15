@@ -188,3 +188,43 @@ DRILLS += ladder(
     model_answer=("Select part id and the sum of quantity as total from lots, grouped by part id, ordered by total "
                   "descending, limit 3."),
 )
+
+# ---------- build tasks ----------
+from _build import build  # noqa: E402
+
+DRILLS += [
+    build(
+        UNIT, 1, pattern="group-count", difficulty=1, topics=["group by", "count", "null"],
+        task="How many lots did each shift make? Leave out lots with no shift.",
+        reference="SELECT shift, COUNT(*) FROM lots WHERE shift IS NOT NULL GROUP BY shift;",
+        say=["from lots", "where shift is not null", "group by shift", "select shift, count star"],
+        hints=["One row per shift means group by shift.", "Drop the missing shifts with where shift is not null."],
+        model_answer="From lots, keep the rows where shift is not null, group by shift, and select the shift and the count.",
+    ),
+    build(
+        UNIT, 2, pattern="top-n", difficulty=2, topics=["group by", "sum", "order by", "limit"], order_matters=True,
+        task="Which three machines have produced the most pieces? Show the machine id and its total, biggest first.",
+        reference="SELECT machine_id, SUM(qty) AS total FROM lots GROUP BY machine_id ORDER BY total DESC LIMIT 3;",
+        say=["from lots", "group by machine id", "select machine id, sum of quantity as total", "order by total descending",
+             "limit 3"],
+        hints=["A total per machine is a group by with a sum.",
+               "Order by the total, largest first, then keep three rows with limit."],
+        model_answer="Group lots by machine id, sum the quantity, order by that total descending, and limit to 3.",
+    ),
+    build(
+        UNIT, 3, pattern="having", difficulty=2, topics=["group by", "having", "count"],
+        task="Which parts have been made in more than ten lots? Show the part id and the number of lots.",
+        reference="SELECT part_id, COUNT(*) FROM lots GROUP BY part_id HAVING COUNT(*) > 10;",
+        say=["from lots", "group by part id", "select part id, count star", "having count star greater than 10"],
+        hints=["Count the lots for each part first.", "A condition on a count goes in having, not in where."],
+        model_answer="Group lots by part id, count the rows, and keep the groups having a count above 10.",
+    ),
+    build(
+        UNIT, 4, pattern="count-distinct", difficulty=2, topics=["group by", "count", "distinct"],
+        task="On how many different days did each machine run? Show the machine id and the number of days.",
+        reference="SELECT machine_id, COUNT(DISTINCT produced_on) FROM lots GROUP BY machine_id;",
+        say=["from lots", "group by machine id", "select machine id, count distinct produced on"],
+        hints=["A machine can make several lots on one day.", "Count distinct produced on, so each day counts once."],
+        model_answer="Group lots by machine id and count the distinct produced on dates.",
+    ),
+]

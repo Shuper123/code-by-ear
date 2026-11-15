@@ -429,5 +429,94 @@
       "Order the window by lot id."
     ],
     "model_answer_spoken": "Select lot id, qty, and the sum of qty over order by lot id, from lots."
+  },
+  {
+    "id": "sql-s6-build-001",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 2,
+    "type": "build",
+    "difficulty": 3,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "window functions",
+      "sum over",
+      "running total"
+    ],
+    "prompt_spoken": "Show a running total of production in lot order. Show the lot id, its quantity, and the running total so far.",
+    "reference": "SELECT lot_id, qty, SUM(qty) OVER (ORDER BY lot_id) AS running_total FROM lots;",
+    "say": [
+      "from lots",
+      "select lot id, quantity, sum of quantity over order by lot id as running total"
+    ],
+    "pattern": "running-total",
+    "order_matters": false,
+    "hints_spoken": [
+      "A running total is a sum over a window.",
+      "Say sum of quantity over order by lot id."
+    ],
+    "model_answer_spoken": "Select lot id, quantity, and the sum of quantity over a window ordered by lot id."
+  },
+  {
+    "id": "sql-s6-build-002",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 2,
+    "type": "build",
+    "difficulty": 3,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "window functions",
+      "rank",
+      "partition by",
+      "cte",
+      "ties"
+    ],
+    "prompt_spoken": "What is the biggest lot each machine has made? Show the machine id, the lot id and the quantity. Keep ties.",
+    "reference": "WITH ranked AS (SELECT machine_id, lot_id, qty, RANK() OVER (PARTITION BY machine_id ORDER BY qty DESC) AS r FROM lots) SELECT machine_id, lot_id, qty FROM ranked WHERE r = 1;",
+    "say": [
+      "from lots",
+      "select machine id, lot id, quantity, rank over partition by machine id order by quantity descending as r",
+      "name it ranked",
+      "where r equals 1",
+      "select machine id, lot id, quantity"
+    ],
+    "pattern": "top-per-group",
+    "order_matters": false,
+    "hints_spoken": [
+      "Rank the lots inside each machine, largest first.",
+      "You can't filter on a window function in the same query. Name the ranked step, then keep rank 1."
+    ],
+    "model_answer_spoken": "Rank the lots within each machine by quantity, largest first. Name that step, then keep the rows where the rank is 1."
+  },
+  {
+    "id": "sql-s6-build-003",
+    "lang": "sql",
+    "unit": "S6",
+    "level": 2,
+    "type": "build",
+    "difficulty": 3,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "window functions",
+      "lag"
+    ],
+    "prompt_spoken": "For machine 1, show each lot next to the one before it. Show the lot id, its quantity, and the previous lot's quantity, in lot order.",
+    "reference": "SELECT lot_id, qty, LAG(qty) OVER (ORDER BY lot_id) AS previous FROM lots WHERE machine_id = 1;",
+    "say": [
+      "from lots",
+      "where machine id equals 1",
+      "select lot id, quantity, lag of quantity over order by lot id as previous"
+    ],
+    "pattern": "previous-row",
+    "order_matters": false,
+    "hints_spoken": [
+      "Lag looks at the row before, inside a window.",
+      "Say lag of quantity over order by lot id."
+    ],
+    "model_answer_spoken": "From lots for machine 1, select lot id, quantity, and the lag of quantity over a window ordered by lot id."
   }
 ]

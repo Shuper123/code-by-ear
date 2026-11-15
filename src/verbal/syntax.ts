@@ -12,6 +12,8 @@ export interface Tok {
   kind: TokKind
   text: string
   unary?: boolean
+  /** The words actually said, when a name was matched to the vocabulary only by sounding close. */
+  said?: string
 }
 export interface Line {
   indent: number
@@ -571,7 +573,7 @@ export function dictate(doc: Doc, utterance: string, lang: VLang, vocabNames: st
 
     const m = matchVocab(ws, i, vocab)
     if (m) {
-      b.emit({ kind: 'name', text: m.name })
+      b.emit(m.exact ? { kind: 'name', text: m.name } : { kind: 'name', text: m.name, said: ws.slice(i, m.next).join(' ') })
       i = m.next
       b.afterAtom(ws[i])
       continue

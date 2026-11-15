@@ -1,14 +1,22 @@
 // Lists every sentence the app speaks that is fixed ahead of time, for the neural voice pre-render:
-// all drill text (prompts, code lines and their phrases, model answers, hints, Sketch and Dictate prompts) plus the app's own
-// fixed sentences, found in the string literals of the session code.
+// all drill text (prompts, code lines and their phrases, model answers, hints, Sketch, Dictate and Build prompts) plus the app's
+// own fixed sentences, found in the string literals of the session code. For Build it also lists what the app says when a task
+// is built the way its model answer says it (each clause echoed, each row count), so that path needs no on-phone voice.
 // Run: npx vite-node scripts/voice_texts.ts  -> build/voice_texts.json
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { rowsPhrase } from '../src/build/feedback'
+import { emptyFrame, sayClause, sayName } from '../src/build/frame'
+import { applyUtterance, nameStep, parseBuildCommand } from '../src/build/parse'
+import { loadBuildSchema, sayColumns, sayTables, tablesOf } from '../src/build/schema'
 import { ALL_DRILLS } from '../src/data/drills'
+import type { DatasetName } from '../src/data/types'
+import { buildAnswer, buildPrompt } from '../src/engine/build'
 import { dictatePrompt } from '../src/engine/dictate'
 import { makeSketchHook } from '../src/engine/sketch'
 import { codePieces, lineCountPhrase, sentences, speechKey, type SpeechStyle } from '../src/speech/chunks'
 import { drillSpeech } from '../src/speech/phrasing'
+import { nodeRunSql } from '../tests/nodeRunners'
 
 const ROOT = join(import.meta.dirname ?? __dirname, '..')
 const out = new Map<string, { key: string; style: SpeechStyle; text: string }>()
@@ -30,12 +38,73 @@ for (const d of ALL_DRILLS) {
     add('prose', sketchWithAi.promptText!(d))
     add('prose', sketchNoAi.promptText!(d))
   }
+  if (d.type === 'build') {
+    add('prose', buildPrompt(d))
+    add('prose', buildAnswer(d))
+    // the echoes heard when the task is built the way its model answer says it
+    const schema = await loadBuildSchema(d.dataset, nodeRunSql)
+    let frame = emptyFrame()
+    for (const step of d.say ?? []) {
+      const cmd = parseBuildCommand(step, schema)
+      const r = cmd?.t === 'name' ? nameStep(frame, cmd.name) : applyUtterance(frame, step, schema)
+      frame = r.frame
+      for (const c of r.changed) {
+        add('prose', c.key === 'cte' ? `Saved as ${sayName(frame.ctes[frame.ctes.length - 1].name)}.` : sayClause(frame.main, c.key, c.index))
+      }
+    }
+  }
+}
+
+// 1b. Build: the tables and their columns, and row counts
+for (const dataset of ['factory', 'shop'] as DatasetName[]) {
+  add('prose', sayTables(dataset))
+  for (const t of tablesOf(dataset)) {
+    add('prose', sayColumns(dataset, t.table))
+    add('prose', `From ${sayName(t.table)}.`)
+  }
+}
+for (let n = 0; n <= 200; n++) add('prose', rowsPhrase(n))
+
+// 1c. Build: the echoes of the clauses most likely to be said on the factory data (one table, one join on a shared
+// column, one grouping or ordering column, a limit), made by the same code that makes the echo, so they match it
+{
+  const schema = await loadBuildSchema('factory', nodeRunSql)
+  const echo = (...steps: string[]) => {
+    let frame = emptyFrame()
+    let last = ''
+    for (const step of steps) {
+      const r = applyUtterance(frame, step, schema)
+      frame = r.frame
+      last = r.changed.map((c) => sayClause(frame.main, c.key, c.index)).join(' ')
+    }
+    add('prose', last)
+  }
+  const columns = [...new Set(schema.tables.flatMap((t) => t.columns))]
+  for (const c of columns) {
+    const said = sayName(c)
+    echo(`group by ${said}`)
+    echo(`order by ${said}`)
+    echo(`order by ${said} descending`)
+    echo(`select ${said}`)
+  }
+  for (const a of schema.tables) {
+    for (const b of schema.tables) {
+      if (a === b) continue
+      for (const c of a.columns.filter((x) => b.columns.includes(x) && x !== 'qty')) {
+        echo(`from ${sayName(a.name)}`, `join ${sayName(b.name)} using ${sayName(c)}`)
+        echo(`from ${sayName(a.name)}`, `left join ${sayName(b.name)} using ${sayName(c)}`)
+      }
+    }
+  }
+  for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25, 50, 100]) echo(`limit ${n}`)
+  for (const s of ['select star', 'select count star', 'order by total descending', 'order by total', 'descending']) echo('order by total', s)
 }
 
 // 2. The app's fixed sentences: string literals in the session code, split into sentences, keeping
 // only complete sentences with nothing filled in at run time.
 const SOURCES = [
   ...readdirSync(join(ROOT, 'src/engine')).map((f) => join('src/engine', f)),
+  ...readdirSync(join(ROOT, 'src/build')).map((f) => join('src/build', f)),
   'src/app/SessionScreen.tsx',
   'src/app/ButtonTest.tsx',
 ]

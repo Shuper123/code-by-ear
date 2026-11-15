@@ -16,11 +16,11 @@ ROOT = Path(__file__).resolve().parent.parent
 CONTENT = ROOT / "content"
 OUT = ROOT / "src" / "data" / "drills"
 
-LEVEL = {"predict": 1, "explain": 1, "spot_bug": 1, "plan": 1, "concept": 1, "sketch": 2, "dictate": 3}
+LEVEL = {"predict": 1, "explain": 1, "spot_bug": 1, "plan": 1, "concept": 1, "sketch": 2, "dictate": 3, "build": 2}
 KEY_ORDER = [
     "id", "lang", "unit", "level", "type", "ladder", "difficulty", "drive_ok", "dataset", "topics",
     "code", "code_spoken", "prompt_spoken", "expected", "answer_kind", "accept", "strict_numbers", "rubric", "bug",
-    "reference", "order_matters", "signature", "function_name", "tests", "vocab", "hints_spoken",
+    "reference", "say", "pattern", "order_matters", "signature", "function_name", "tests", "vocab", "hints_spoken",
     "model_answer_spoken",
 ]
 

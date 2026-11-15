@@ -195,6 +195,19 @@ export function SettingsScreen() {
       </div>
 
       <div class="card">
+        <h2>Build and typed</h2>
+        <label class="check">
+          <input type="checkbox" checked={s.buildEcho} onChange={(e) => set({ buildEcho: (e.target as HTMLInputElement).checked })} />
+          <span>
+            Build: say each clause back as it lands
+            <br />
+            <span class="faint">Off is quicker when you're watching the screen: you only hear the row count or the error.</span>
+          </span>
+        </label>
+        <NumberField label="Tasks in a typed set" value={s.typedPerSet} min={1} max={10} step={1} onChange={(v) => set({ typedPerSet: v })} />
+      </div>
+
+      <div class="card">
         <h2>Dictation</h2>
         <label class="field">
           <span>Dictate drills start in</span>

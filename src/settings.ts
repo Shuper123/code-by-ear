@@ -31,6 +31,8 @@ export interface Settings {
   neuralVoice: string // Kokoro voice ID; the pre-rendered drill audio uses af_heart
   neuralModel: 'off' | 'best' | 'small' // on-phone generation for new text: off, fp32 (about 330 MB) or q8 (about 90 MB)
   dictateMode: 'code' | 'keys' // the mode Dictate drills start in
+  buildEcho: boolean // Build: say each clause back as it lands
+  typedPerSet: number // how many tasks a typed set holds
   breakEveryMin: number
   cueVolume: number // 0..1
 }
@@ -45,7 +47,7 @@ export const DEFAULT_SETTINGS: Settings = {
   silenceDriveMs: 4000,
   silenceParkedMs: 2500,
   thinkMs: 15000,
-  languageMix: 'both',
+  languageMix: 'sql', // SQL first (Joshua, 2026-11-15); Settings, Languages switches Python back in
   newPerSession: 5,
   sessionMinutes: 25,
   sttContinuous: false,
@@ -60,6 +62,8 @@ export const DEFAULT_SETTINGS: Settings = {
   neuralVoice: 'af_heart',
   neuralModel: 'off',
   dictateMode: 'code',
+  buildEcho: true,
+  typedPerSet: 5,
   breakEveryMin: 10,
   cueVolume: 0.35,
 }
@@ -73,8 +77,24 @@ function notify() {
   for (const l of listeners) l()
 }
 
+/** Bumped when a default changes in a way that should reach phones that already have settings saved. */
+export const SETTINGS_VERSION = 2
+
+/** One-time changes to saved settings. Version 2: SQL first, so a mix still on "both" becomes SQL. */
+export function migrateSettings(saved: Partial<Settings>, fromVersion: number): Partial<Settings> {
+  const next = { ...saved }
+  if (fromVersion < 2 && (next.languageMix === undefined || next.languageMix === 'both')) next.languageMix = 'sql'
+  return next
+}
+
 export async function loadSettings(): Promise<Settings> {
-  const saved = (await kvGet<Partial<Settings>>('settings')) ?? {}
+  let saved = (await kvGet<Partial<Settings>>('settings')) ?? {}
+  const version = (await kvGet<number>('settingsVersion')) ?? 1
+  if (version < SETTINGS_VERSION) {
+    saved = migrateSettings(saved, version)
+    if (Object.keys(saved).length) await kvSet('settings', saved)
+    await kvSet('settingsVersion', SETTINGS_VERSION)
+  }
   current = { ...DEFAULT_SETTINGS, ...saved }
   apiKey = (await kvGet<string>('apiKey')) ?? ''
   loaded = true

@@ -210,3 +210,60 @@ DRILLS += ladder(
     model_answer=("Select machine id and the count of lot id from machines, left join lots on machine id, grouped "
                   "by machine id."),
 )
+
+# ---------- build tasks ----------
+from _build import build  # noqa: E402
+
+DRILLS += [
+    build(
+        UNIT, 1, pattern="join-aggregate", difficulty=2, topics=["inner join", "group by", "sum", "ambiguous columns"],
+        task="How many defective pieces has each machine produced? Show the machine id and the total defect quantity.",
+        reference="SELECT l.machine_id, SUM(d.qty) FROM defects d JOIN lots l ON l.lot_id = d.lot_id GROUP BY l.machine_id;",
+        say=["from defects", "join lots using lot id", "group by machine id",
+             "select machine id, sum of defects dot quantity"],
+        hints=["Defect quantities are in defects. The machine is on the lot.",
+               "Join defects to lots on lot id. Both tables have a quantity, so say defects dot quantity."],
+        model_answer="Join defects to lots on lot id, group by machine id, and sum the defects quantity.",
+    ),
+    build(
+        UNIT, 2, pattern="join-filter", difficulty=2, topics=["inner join", "where", "count"],
+        task="How many defect records are structural?",
+        reference=("SELECT COUNT(*) FROM defects d JOIN defect_codes c ON c.defect_code = d.defect_code "
+                   "WHERE c.category = 'structural';"),
+        say=["from defects", "join defect codes using defect code", "where category equals structural",
+             "select count star"],
+        hints=["The category is in the defect codes table.",
+               "Join defects to defect codes on defect code, then filter on the category."],
+        model_answer="Join defects to defect codes on defect code, keep the structural category, and count the rows.",
+    ),
+    build(
+        UNIT, 3, pattern="anti-join", difficulty=3, topics=["left join", "null"],
+        task="Which lots have no defects at all? List the lot ids.",
+        reference="SELECT l.lot_id FROM lots l LEFT JOIN defects d ON d.lot_id = l.lot_id WHERE d.defect_id IS NULL;",
+        say=["from lots", "left join defects using lot id", "where defect id is null", "select lot id"],
+        hints=["Start from lots and keep every lot, even the ones with no match in defects.",
+               "After a left join, a lot with no defects has null in the defect columns."],
+        model_answer="Left join defects to lots on lot id, and keep the rows where the defect id is null.",
+    ),
+    build(
+        UNIT, 4, pattern="three-table-join", difficulty=3, topics=["inner join", "group by", "sum"],
+        task="How many defective pieces does each part have? Show the part name and the total defect quantity.",
+        reference=("SELECT p.part_name, SUM(d.qty) FROM defects d JOIN lots l ON l.lot_id = d.lot_id "
+                   "JOIN parts p ON p.part_id = l.part_id GROUP BY p.part_name;"),
+        say=["from defects", "join lots using lot id", "join parts using part id", "group by part name",
+             "select part name, sum of defects dot quantity"],
+        hints=["Defects link to lots, and lots link to parts.", "Two joins. Lots on lot id, then parts on part id."],
+        model_answer=("Join defects to lots on lot id and lots to parts on part id, group by part name, and sum the "
+                      "defects quantity."),
+    ),
+    build(
+        UNIT, 5, pattern="join-expression", difficulty=3, topics=["inner join", "group by", "sum", "expressions"],
+        task="What is the material cost of everything produced on each line? Cost is quantity times unit cost.",
+        reference="SELECT p.line, SUM(l.qty * p.unit_cost) FROM lots l JOIN parts p ON p.part_id = l.part_id GROUP BY p.line;",
+        say=["from lots", "join parts using part id", "group by line",
+             "select line, sum of open paren quantity times unit cost close paren"],
+        hints=["The unit cost and the line are on the part.",
+               "Multiply inside the sum. Say open paren before quantity and close paren after unit cost."],
+        model_answer="Join lots to parts on part id, group by line, and sum quantity times unit cost.",
+    ),
+]

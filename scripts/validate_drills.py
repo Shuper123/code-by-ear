@@ -31,10 +31,10 @@ MIN_L1_PER_LANG = 40
 MIN_LADDERS_PER_LANG = 12
 DRIVE_MAX_LINES = 4
 DRIVE_MAX_WORDS = 60
-TYPES = {"predict", "explain", "spot_bug", "plan", "concept", "sketch", "dictate"}
+TYPES = {"predict", "explain", "spot_bug", "plan", "concept", "sketch", "dictate", "build"}
 TYPE_SLUG = {"predict": "predict", "explain": "explain", "spot_bug": "bug", "plan": "plan", "concept": "concept",
-             "sketch": "sketch", "dictate": "dictate"}
-LEVEL = {"predict": 1, "explain": 1, "spot_bug": 1, "plan": 1, "concept": 1, "sketch": 2, "dictate": 3}
+             "sketch": "sketch", "dictate": "dictate", "build": "build"}
+LEVEL = {"predict": 1, "explain": 1, "spot_bug": 1, "plan": 1, "concept": 1, "sketch": 2, "dictate": 3, "build": 2}
 # Raw code symbols that must never reach text-to-speech. A hyphen is fine between words, not before a digit.
 BANNED = re.compile(r"[()\[\]{}=:#_<>*/%+\"`|\\;]|-(?=\d)")
 SPOKEN_FIELDS = ("code_spoken", "prompt_spoken", "model_answer_spoken")
@@ -203,6 +203,7 @@ def main():
             errors[did].append("code without code_spoken (raw code never goes to speech)")
         spoken = [(k, d.get(k)) for k in SPOKEN_FIELDS if d.get(k)]
         spoken += [(f"hints_spoken[{i}]", h) for i, h in enumerate(d.get("hints_spoken") or [])]
+        spoken += [(f"say[{i}]", s) for i, s in enumerate(d.get("say") or [])]
         if d.get("bug"):
             spoken.append(("bug.fix_spoken", d["bug"].get("fix_spoken", "")))
         for k, v in spoken:
@@ -213,11 +214,13 @@ def main():
             errors[did].append("missing rubric (key points for AI grading)")
         if len(d.get("hints_spoken") or []) > 3:
             warnings[did].append("more than 3 hints")
-        if not d.get("hints_spoken") and t in ("predict", "spot_bug", "sketch", "dictate"):
+        if not d.get("hints_spoken") and t in ("predict", "spot_bug", "sketch", "dictate", "build"):
             warnings[did].append("no hints")
         if d.get("drive_ok"):
             if t == "dictate":
                 errors[did].append("Dictate is Parked only (drive_ok must be false)")
+            if t == "build":
+                errors[did].append("Build is Parked only for now (drive_ok must be false)")
             n_lines = len(code_lines(d.get("code")))
             if n_lines > DRIVE_MAX_LINES:
                 errors[did].append(f"Drive drill has {n_lines} lines of code (max {DRIVE_MAX_LINES})")
@@ -243,6 +246,16 @@ def main():
                 errors[did].append("SQL Sketch/Dictate needs a dataset")
             if not d.get("vocab"):
                 warnings[did].append("no vocab list")
+        if t == "build":
+            if lang != "sql":
+                errors[did].append("Build tasks are SQL only for now")
+            if not d.get("reference") or not d.get("dataset"):
+                errors[did].append("Build task needs a reference query and a dataset")
+            say = d.get("say")
+            if not isinstance(say, list) or not say or not all(isinstance(s, str) and s.strip() for s in say):
+                errors[did].append("Build task needs say: the reference as spoken steps")
+            if not d.get("pattern"):
+                errors[did].append("Build task needs a pattern name")
 
     # ---------- ladders ----------
     ladders = defaultdict(dict)
@@ -312,7 +325,7 @@ def main():
                         errors[did].append("fixed query does not match the reference rows")
                 if not ferr and not berr and canon_rows(buggy, om) == canon_rows(fixed, om):
                     errors[did].append("buggy query returns the same rows as the fixed query (the bug has no effect)")
-            elif t in ("sketch", "dictate") and d.get("reference"):
+            elif t in ("sketch", "dictate", "build") and d.get("reference"):
                 rows, err = sql_run(d["reference"], ds)
                 checked["sql"] += 1
                 if err:
@@ -404,19 +417,19 @@ def main():
         "",
         "## Drills per unit",
         "",
-        "| Unit | Predict | Explain | Spot the bug | Plan | Concept | Sketch | Dictate | Drive-ok |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| Unit | Predict | Explain | Spot the bug | Plan | Concept | Sketch | Dictate | Build | Drive-ok |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for unit in sorted(per_unit, key=lambda u: (u[0] != "S", u)):
         c = per_unit[unit]
         lines.append(f"| {unit} | {c['predict']} | {c['explain']} | {c['spot_bug']} | {c['plan']} | {c['concept']} |"
-                     f" {c['sketch']} | {c['dictate']} | {c['drive_ok']} |")
+                     f" {c['sketch']} | {c['dictate']} | {c['build']} | {c['drive_ok']} |")
     lines += ["", "## Errors", ""]
     lines += [f"- `{k}`: {m}" for k in sorted(errors) for m in errors[k]] or ["None."]
     lines += ["", "## Warnings", ""]
     lines += [f"- `{k}`: {m}" for k in sorted(warnings) for m in warnings[k]] or ["None."]
     if hashes:
-        lines += ["", "## Reference row hashes (SQL Sketch and Dictate)", "", "| Drill | Rows | Hash |", "| --- | --- | --- |"]
+        lines += ["", "## Reference row hashes (SQL Sketch, Dictate and Build)", "", "| Drill | Rows | Hash |", "| --- | --- | --- |"]
         lines += [f"| {k} | {v['rows']} | `{v['hash']}` |" for k, v in sorted(hashes.items())]
     REPORT_MD.parent.mkdir(parents=True, exist_ok=True)
     REPORT_MD.write_text("\n".join(lines) + "\n")

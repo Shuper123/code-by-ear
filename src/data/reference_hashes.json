@@ -15,6 +15,18 @@
     "hash": "43dddbdb419ca751",
     "rows": 5
   },
+  "sql-s2-build-001": {
+    "hash": "14d87211e8d03982",
+    "rows": 13
+  },
+  "sql-s2-build-002": {
+    "hash": "a9aa85acf18adf4f",
+    "rows": 1
+  },
+  "sql-s2-build-003": {
+    "hash": "bc6fd60317edab8b",
+    "rows": 1
+  },
   "sql-s2-dictate-003": {
     "hash": "d7ecd4197f50b6e4",
     "rows": 6
@@ -30,6 +42,22 @@
   "sql-s2-sketch-006": {
     "hash": "5a603bed8175dd9b",
     "rows": 17
+  },
+  "sql-s3-build-001": {
+    "hash": "64c9950f965ab499",
+    "rows": 2
+  },
+  "sql-s3-build-002": {
+    "hash": "ccc16c713a235918",
+    "rows": 3
+  },
+  "sql-s3-build-003": {
+    "hash": "856b759164eb76a2",
+    "rows": 5
+  },
+  "sql-s3-build-004": {
+    "hash": "11a5f3dc8c24354b",
+    "rows": 5
   },
   "sql-s3-dictate-004": {
     "hash": "f044c641fb7f148e",
@@ -55,6 +83,26 @@
     "hash": "62de1da1da7b5505",
     "rows": 3
   },
+  "sql-s4-build-001": {
+    "hash": "bef24069dd2e1695",
+    "rows": 5
+  },
+  "sql-s4-build-002": {
+    "hash": "1220e80a7a8fb1bc",
+    "rows": 1
+  },
+  "sql-s4-build-003": {
+    "hash": "0de0bb2032d524c7",
+    "rows": 26
+  },
+  "sql-s4-build-004": {
+    "hash": "c829bfc03f150c8b",
+    "rows": 12
+  },
+  "sql-s4-build-005": {
+    "hash": "d61742dfebeddaac",
+    "rows": 3
+  },
   "sql-s4-dictate-007": {
     "hash": "c89eae1dc624c934",
     "rows": 120
@@ -71,6 +119,26 @@
     "hash": "029674e08c23f686",
     "rows": 6
   },
+  "sql-s5-build-001": {
+    "hash": "4d79c7032ac53634",
+    "rows": 3
+  },
+  "sql-s5-build-002": {
+    "hash": "6853c86a9e5c56a3",
+    "rows": 62
+  },
+  "sql-s5-build-003": {
+    "hash": "84377fa78279b949",
+    "rows": 1
+  },
+  "sql-s5-build-004": {
+    "hash": "4221aacbb789d320",
+    "rows": 5
+  },
+  "sql-s5-build-005": {
+    "hash": "af5fba0f83998016",
+    "rows": 5
+  },
   "sql-s5-dictate-009": {
     "hash": "6853c86a9e5c56a3",
     "rows": 62
@@ -86,6 +154,18 @@
   "sql-s5-sketch-010": {
     "hash": "0ec62547de31946c",
     "rows": 150
+  },
+  "sql-s6-build-001": {
+    "hash": "5b62ec9b9f7b5e95",
+    "rows": 120
+  },
+  "sql-s6-build-002": {
+    "hash": "d2680a6e5e1515c0",
+    "rows": 7
+  },
+  "sql-s6-build-003": {
+    "hash": "301639f39c53f89c",
+    "rows": 17
   },
   "sql-s6-dictate-011": {
     "hash": "9563c106119278fb",

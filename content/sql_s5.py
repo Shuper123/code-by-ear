@@ -180,3 +180,71 @@ DRILLS += ladder(
     hints=["Use case when.", "The else branch covers every other status."],
     model_answer="Select order id and case when status is cancelled then cancelled, else active, end, from orders.",
 )
+
+# ---------- build tasks ----------
+from _build import build  # noqa: E402
+
+DRILLS += [
+    build(
+        UNIT, 1, pattern="case-bucket", difficulty=3, topics=["case when", "group by", "count"],
+        task=("Sort lots into sizes. Under 150 pieces is small, 150 to 300 is medium, and over 300 is large. "
+              "How many lots are in each size?"),
+        reference=("SELECT CASE WHEN qty < 150 THEN 'small' WHEN qty <= 300 THEN 'medium' ELSE 'large' END AS size, "
+                   "COUNT(*) FROM lots GROUP BY size;"),
+        say=["from lots",
+             "select case when quantity less than 150 then small when quantity at most 300 then medium else large end as size, count star",
+             "group by size"],
+        hints=["Build the label with case when, then count by it.",
+               "Give the case a name with as size, and group by that name."],
+        model_answer="Use a case expression to label each lot small, medium or large, name it size, group by size, and count.",
+    ),
+    build(
+        UNIT, 2, pattern="scalar-subquery", difficulty=3, topics=["subquery", "avg", "where"],
+        task="Which lots are bigger than the average lot? Show the lot id and the quantity.",
+        reference="SELECT lot_id, qty FROM lots WHERE qty > (SELECT AVG(qty) FROM lots);",
+        say=["from lots", "where quantity greater than open paren select average of quantity from lots close paren",
+             "select lot id, quantity"],
+        hints=["You need the overall average first.",
+               "Put a small query inside the where. Say open paren, select average of quantity from lots, close paren."],
+        model_answer=("Select lot id and quantity from lots where quantity is greater than a subquery that selects the "
+                      "average quantity."),
+    ),
+    build(
+        UNIT, 3, pattern="two-step", difficulty=3, topics=["cte", "with", "group by", "avg"],
+        task="What is the average number of lots per machine, counting only machines that have made lots?",
+        reference=("WITH per_machine AS (SELECT machine_id, COUNT(*) AS lots_made FROM lots GROUP BY machine_id) "
+                   "SELECT AVG(lots_made) FROM per_machine;"),
+        say=["from lots", "group by machine id", "select machine id, count star as lots made", "name it per machine",
+             "select average of lots made"],
+        hints=["Do it in two steps. Count the lots for each machine, then average those counts.",
+               "Build the count per machine, say name it per machine, then select the average from it."],
+        model_answer="First count the lots for each machine. Then take the average of those counts.",
+    ),
+    build(
+        UNIT, 4, pattern="conditional-aggregate", difficulty=3, topics=["case when", "sum", "group by", "integer division"],
+        task="What percentage of each machine's lots ran on the night shift? Show the machine id and the percentage.",
+        reference=("SELECT machine_id, 100.0 * SUM(CASE WHEN shift = 'night' THEN 1 ELSE 0 END) / COUNT(*) "
+                   "FROM lots GROUP BY machine_id;"),
+        say=["from lots", "group by machine id",
+             "select machine id, 100.0 times sum of open paren case when shift equals night then 1 else 0 end close paren divided by count star"],
+        hints=["Count the night lots with a sum of a case that gives 1 or 0.",
+               "Multiply by 100.0, with the decimal point, so the division keeps its decimals."],
+        model_answer=("Group lots by machine id. Sum a case that is 1 for night and 0 otherwise, multiply by 100.0, "
+                      "and divide by the count."),
+    ),
+    build(
+        UNIT, 5, pattern="fan-out", difficulty=3, topics=["cte", "left join", "group by", "sum", "row counts"],
+        task=("What is each machine's defect rate, meaning defective pieces divided by pieces produced? "
+              "Be careful, because a lot can have several defect records."),
+        reference=("WITH per_lot AS (SELECT lot_id, SUM(qty) AS bad FROM defects GROUP BY lot_id) "
+                   "SELECT l.machine_id, SUM(b.bad) * 1.0 / SUM(l.qty) FROM lots l "
+                   "LEFT JOIN per_lot b ON b.lot_id = l.lot_id GROUP BY l.machine_id;"),
+        say=["from defects", "group by lot id", "select lot id, sum of quantity as bad", "name it per lot", "from lots",
+             "left join per lot using lot id", "group by machine id",
+             "select machine id, sum of bad times 1.0 divided by sum of quantity"],
+        hints=["If you join lots straight to defects, a lot with three defect records has its quantity counted three times.",
+               "First total the defects for each lot and name that step. Then left join it to lots and divide the sums."],
+        model_answer=("First total the defect quantity for each lot. Then left join that to lots, group by machine id, "
+                      "and divide the sum of defective pieces by the sum of quantity."),
+    ),
+]

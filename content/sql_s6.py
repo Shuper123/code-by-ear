@@ -194,3 +194,41 @@ DRILLS += ladder(
     hints=["A running total is a sum over a window.", "Order the window by lot id."],
     model_answer="Select lot id, qty, and the sum of qty over order by lot id, from lots.",
 )
+
+# ---------- build tasks ----------
+from _build import build  # noqa: E402
+
+DRILLS += [
+    build(
+        UNIT, 1, pattern="running-total", difficulty=3, topics=["window functions", "sum over", "running total"],
+        task="Show a running total of production in lot order. Show the lot id, its quantity, and the running total so far.",
+        reference="SELECT lot_id, qty, SUM(qty) OVER (ORDER BY lot_id) AS running_total FROM lots;",
+        say=["from lots", "select lot id, quantity, sum of quantity over order by lot id as running total"],
+        hints=["A running total is a sum over a window.", "Say sum of quantity over order by lot id."],
+        model_answer="Select lot id, quantity, and the sum of quantity over a window ordered by lot id.",
+    ),
+    build(
+        UNIT, 2, pattern="top-per-group", difficulty=3, topics=["window functions", "rank", "partition by", "cte", "ties"],
+        task=("What is the biggest lot each machine has made? Show the machine id, the lot id and the quantity. "
+              "Keep ties."),
+        reference=("WITH ranked AS (SELECT machine_id, lot_id, qty, RANK() OVER (PARTITION BY machine_id ORDER BY qty DESC) AS r "
+                   "FROM lots) SELECT machine_id, lot_id, qty FROM ranked WHERE r = 1;"),
+        say=["from lots",
+             "select machine id, lot id, quantity, rank over partition by machine id order by quantity descending as r",
+             "name it ranked", "where r equals 1", "select machine id, lot id, quantity"],
+        hints=["Rank the lots inside each machine, largest first.",
+               "You can't filter on a window function in the same query. Name the ranked step, then keep rank 1."],
+        model_answer=("Rank the lots within each machine by quantity, largest first. Name that step, then keep the rows "
+                      "where the rank is 1."),
+    ),
+    build(
+        UNIT, 3, pattern="previous-row", difficulty=3, topics=["window functions", "lag"],
+        task=("For machine 1, show each lot next to the one before it. Show the lot id, its quantity, and the previous "
+              "lot's quantity, in lot order."),
+        reference="SELECT lot_id, qty, LAG(qty) OVER (ORDER BY lot_id) AS previous FROM lots WHERE machine_id = 1;",
+        say=["from lots", "where machine id equals 1",
+             "select lot id, quantity, lag of quantity over order by lot id as previous"],
+        hints=["Lag looks at the row before, inside a window.", "Say lag of quantity over order by lot id."],
+        model_answer="From lots for machine 1, select lot id, quantity, and the lag of quantity over a window ordered by lot id.",
+    ),
+]

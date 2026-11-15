@@ -3,6 +3,7 @@ import { ALL_DRILLS } from '../data/drills'
 import { UNIT_NAMES } from '../data/types'
 import { localDate } from '../engine/dates'
 import { dueCount, idbStore } from '../engine/progress'
+import { typedQueue } from '../engine/typed'
 import { languagesFor } from '../engine/queue'
 import { newDrillUnit } from '../engine/unlock'
 import { isStandalone, pwa } from '../pwa'
@@ -31,20 +32,25 @@ function UpdateBanner() {
 }
 
 /** Start buttons run inside a tap, which lets the page play audio and speech afterwards. */
-function startSession(profile: Profile) {
+function startSession(profile: Profile, focus?: 'build') {
   unlockAudio()
   if (ttsSupported()) {
     const u = new SpeechSynthesisUtterance(' ')
     u.volume = 0
     window.speechSynthesis.speak(u)
   }
-  navigate('session', { profile })
+  navigate('session', focus ? { profile, focus } : { profile })
 }
 
 interface Today {
   due: number
   seen: number
   next: string[]
+  /** Build tasks passed by voice, out of how many there are. */
+  built: number
+  buildTotal: number
+  /** Tasks waiting in the typed set. */
+  toType: number
 }
 
 export function Home() {
@@ -54,15 +60,24 @@ export function Home() {
 
   useEffect(() => {
     void (async () => {
-      const states = await idbStore.loadStates()
+      const [states, attempts] = await Promise.all([idbStore.loadStates(), idbStore.loadAttempts()])
       const langs = languagesFor(settings.languageMix)
+      const buildIds = new Set(ALL_DRILLS.filter((d) => d.type === 'build').map((d) => d.id))
+      const built = new Set(attempts.filter((a) => buildIds.has(a.drillId) && a.score >= 2).map((a) => a.drillId)).size
       const drills = ALL_DRILLS.filter((d) => langs.includes(d.lang))
       const seen = new Set([...states.values()].filter((s) => s.reps > 0).map((s) => s.id))
       const next = langs
         .map((l) => newDrillUnit(ALL_DRILLS, l, seen))
         .filter((u): u is string => !!u)
         .map((u) => `${u} ${UNIT_NAMES[u]}`)
-      setToday({ due: dueCount(states, drills, localDate()), seen: [...seen].filter((id) => drills.some((d) => d.id === id)).length, next })
+      setToday({
+        due: dueCount(states, drills, localDate()),
+        seen: [...seen].filter((id) => drills.some((d) => d.id === id)).length,
+        next,
+        built,
+        buildTotal: buildIds.size,
+        toType: typedQueue(ALL_DRILLS, states, attempts, localDate(), 1000).length,
+      })
     })()
   }, [settings.languageMix])
 
@@ -97,10 +112,13 @@ export function Home() {
         {today ? (
           <>
             <p>
-              <strong>{today.due}</strong> review{today.due === 1 ? '' : 's'} due · {today.seen} drills seen so far
+              <strong>{today.due}</strong> review{today.due === 1 ? '' : 's'} due · {today.seen} drill{today.seen === 1 ? '' : 's'} seen so far
             </p>
             <p class="muted small">
               {mix}. New drills from {today.next.length ? today.next.join(' and ') : 'any unit (all units mostly seen)'}.
+            </p>
+            <p class="muted small">
+              Build: {today.built} of {today.buildTotal} tasks passed by voice · {today.toType} waiting to be typed
             </p>
           </>
         ) : (
@@ -114,10 +132,23 @@ export function Home() {
       <p class="faint" style={{ margin: '6px 4px 14px' }}>
         {settings.sessionMinutes} minutes, voice only. Press before you pull out.
       </p>
-      <button class="btn teal block big" onClick={() => startSession('parked')}>
-        Start Parked
+      <button class="btn teal block big" onClick={() => startSession('parked', 'build')}>
+        Start Build
       </button>
-      <p class="faint" style={{ margin: '6px 4px 14px' }}>Code and transcript on screen. Ends when you say stop session.</p>
+      <p class="faint" style={{ margin: '6px 4px 14px' }}>
+        Write SQL out loud, one clause at a time, and hear what the database returns. Parked for now.
+      </p>
+      <div class="grid2" style={{ marginBottom: '6px' }}>
+        <button class="btn big" onClick={() => startSession('parked')}>
+          Start Parked
+        </button>
+        <button class="btn big" onClick={() => navigate('typed')}>
+          Typed set{today?.toType ? ` (${Math.min(today.toType, settings.typedPerSet)})` : ''}
+        </button>
+      </div>
+      <p class="faint" style={{ margin: '6px 4px 14px' }}>
+        Parked: drills with code and transcript on screen. Typed: the tasks you built by voice, at the keyboard.
+      </p>
 
       <div class="row" style={{ marginBottom: '14px' }}>
         <button class="btn" onClick={() => navigate('progress')}>

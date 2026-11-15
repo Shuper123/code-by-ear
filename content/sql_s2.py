@@ -175,3 +175,33 @@ DRILLS += ladder(
     hints=["Filter on the city column.", "In takes a list of values."],
     model_answer="Select name from customers where city is in Riverton or Lakeside.",
 )
+
+# ---------- build tasks ----------
+from _build import build  # noqa: E402
+
+DRILLS += [
+    build(
+        UNIT, 1, pattern="filter", difficulty=1, topics=["where", "and"],
+        task="Which night shift lots made more than 400 pieces? Show the lot id and the quantity.",
+        reference="SELECT lot_id, qty FROM lots WHERE shift = 'night' AND qty > 400;",
+        say=["from lots", "where shift equals night and quantity greater than 400", "select lot id, quantity"],
+        hints=["Everything you need is in the lots table.", "Two conditions joined with and. One on the shift, one on the quantity."],
+        model_answer="Filter lots to the night shift with a quantity above 400, and select the lot id and quantity.",
+    ),
+    build(
+        UNIT, 2, pattern="null-check", difficulty=1, topics=["null", "count"],
+        task="How many lots are missing their shift?",
+        reference="SELECT COUNT(*) FROM lots WHERE shift IS NULL;",
+        say=["from lots", "where shift is null", "select count star"],
+        hints=["A missing value is a null.", "You can't compare to null with equals. Say is null."],
+        model_answer="Count the rows in lots where shift is null.",
+    ),
+    build(
+        UNIT, 3, pattern="date-range", difficulty=2, topics=["dates", "between", "sum"],
+        task="How many pieces were produced in February 2026? Add up the quantity.",
+        reference="SELECT SUM(qty) FROM lots WHERE produced_on BETWEEN '2026-02-01' AND '2026-02-28';",
+        say=["from lots", "where produced on between February 1st 2026 and February 28th 2026", "select sum of quantity"],
+        hints=["The date is in produced on.", "Use between, with the first and the last day of the month."],
+        model_answer="Sum the quantity in lots where produced on is between February 1st and February 28th, 2026.",
+    ),
+]

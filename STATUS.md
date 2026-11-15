@@ -4,8 +4,8 @@
 - Spec: "Code by Ear: Build Plan" doc, https://claude.ai/artifact/CzQVMPkJ4s1w8pv6QvThSM (sections are numbered in
   order: 3 Decisions, 5 Sessions, 6 Grading, 7 Learning engine, 8 Content, 9 Verbal Syntax, 12 Safety and privacy,
   13 Milestones, 14 Testing)
-- Last updated: 2026-11-15, after M4: pauses inside a line of code (after "equals", "then", commas, and variables
-  used again) added to the neural voice, pacing, and voice editor round
+- Last updated: 2026-11-15, after M4: the spoken SQL build loop (20 analyst tasks), typed mode with its
+  first-try scoreboard, and SQL first as the default
 
 ## Milestones
 
@@ -17,6 +17,7 @@
 | M3 Verbal Syntax and Dictate | Deployed, waiting for phone test | Parser, edit commands, read-back, Dictate in Parked; 26 ladders |
 | M4 Polish | Deployed, waiting for phone test | Progress, Drills browser, export and import, media buttons spike |
 | After M4 (Joshua's requests) | Deployed, waiting for phone test | Neural voice (Kokoro), pacing with pauses inside lines, voice editor with Keys mode and plain-English edits |
+| Build loop, typed mode, SQL first (2026-11-15) | Deployed, waiting for phone test | Write SQL out loud clause by clause against the real database; the same tasks typed; 20 analyst tasks |
 
 ## What works
 
@@ -163,9 +164,82 @@ After M4 (requested by Joshua on 2026-11-14)
   checks a live Python error and its Keys-mode fix, a plain-English edit, a drill spoken entirely from
   pre-recorded clips, and the on-phone voice generating a new sentence (with a local stand-in for Hugging Face).
 
+Build loop, typed mode, SQL first (agreed with Joshua on 2026-11-15)
+
+Why: the goal is practice making code for data analytics jobs, hands-free. Before this, 170 of 222 drills were
+hear-it-and-answer and only 26 problems asked for a solution. The build loop makes writing the query the main
+activity; typed mode closes the loop at the keyboard and measures whether the voice practice carries over.
+
+- **Build** (`src/build/`, `src/engine/build.ts`; Home, Start Build; Parked only for now): a task is asked the way a
+  manager would ask it ("Which three machines have produced the most pieces?"). You say real clauses one at a
+  time, in any order: "from lots", "group by machine id", "select machine id, sum of quantity as total", "order by
+  total descending", "limit 3". Each clause lands in its slot in a query frame; the app writes the SQL, runs it on
+  the practice database (sql.js) after every step, and says what happened: the clause it heard, then the row count
+  ("Group by machine id. 5 rows."), SQLite's own error ("Error. Ambiguous column name: quantity."), or "That's a
+  match." when the rows equal the reference's. Rules and a real database only; no AI anywhere in the loop.
+- **The app types the punctuation** (`src/build/parse.ts`): parentheses for calls ("sum of quantity", "count
+  distinct part id", "round of average of quantity comma 1"), window specs ("rank over partition by machine id
+  order by quantity descending as r"), IN lists and spoken "open paren ... close paren" subqueries; quotes around
+  values, written the way the data stores them ("where line equals a" gives 'A'; "knight" becomes 'night'); dates
+  as said ("between February 1st 2026 and February 28th 2026"); commas ("select lot id and quantity"); underscores
+  ("as total scrap" gives total_scrap). Joins: "join lots using lot id", "on lot id", or a full "on a dot x equals
+  b dot x". A clause said again replaces it; "and ...", "comma ..." and "descending" continue the clause said last;
+  an expression with no keyword is a new column. A clause the recognizer cut in two at a pause is put back together
+  ("where quantity greater than" ... "400"; a case or a window finished in the next breath).
+- **Steps** for CTEs: "name it ranked" turns the query so far into `WITH ranked AS (...)` and the next query reads
+  from it. That is how top-per-group and the fan-out task are built.
+- **Commands** (whole utterances): tables, columns of lots, results (first rows read out), compare (how the rows
+  differ from the answer, without giving it away), read it back, undo, redo, remove where (or order by, limit,
+  join ...), start over, hint, show me, done, skip, repeat. Hints are the task's written hints first, then the
+  first piece still missing ("You need a group by."), found by comparing the query with the reference. "Show me"
+  reads the idea and then the clauses as you would say them, scores 0, and the task comes back at the end of the
+  session.
+- **Scoring**: a match with no hints is 3, with hints 2, show me 0. Build tasks use the same review schedule as
+  everything else. A Build session queues reviews that are due, then new tasks in content order (easiest first).
+- **20 analyst tasks** on the factory data, one pattern each (units S2 to S6): filter, null check, date range,
+  group and count, top-n, having, count distinct, join and aggregate, join and filter, anti-join, three-table join,
+  an expression inside a sum, case buckets, scalar subquery, two-step average of counts, conditional aggregate
+  (percentage with 100.0), fan-out (pre-aggregate before joining), running total, top per group, previous row
+  (lag). Each task's reference runs in `validate_drills.py`; each task's spoken model answer (`say`) is run through
+  the parser in `tests/build.test.ts` and must match the reference rows.
+- **Parked screen**: the query with the clause that just changed marked, the first 8 rows or the error, the row
+  count against the answer's, buttons (Undo, Read it back, Results, Compare, Tables, Show me), the tables and
+  columns, and a folded "How to say it" sheet.
+- **Typed mode** (`src/engine/typed.ts`, `src/app/TypedScreen.tsx`; Home, Typed set): the tasks passed by voice come
+  back at the keyboard (no voice on that screen), run against the same reference. A set holds typed reviews that
+  are due, then tasks built by voice and not typed since (5 by default; Settings). Any SQL task with a reference
+  can be typed from Drills (the 20 build tasks and the 13 SQL ladders). Run shows SQLite's error or how the rows
+  differ; Show answer lays the reference out. First Run matches: 3; second or third: 2; later: 1; answer shown: 0.
+  Typed attempts are stored as type "typed" under the task id plus "#typed" (so backups include them) with their own
+  review schedule.
+- **Scoreboard** (Progress, Build and typed): tasks built by voice, typed first-try rate over the last 20 and all
+  time, how many are waiting to be typed, and a table of best voice and typed score per task.
+- **SQL first**: the language mix defaults to SQL, and a phone whose saved mix was still "both" is switched to SQL
+  once (Settings, Sessions switches Python back in). Python content is unchanged.
+- **Voice**: every fixed sentence of the loop is pre-recorded, including row counts from 0 to 200, the table and
+  column summaries, and the echoes and results heard when a task is built the way its model answer says it, so that
+  path needs no on-phone voice. Other echoes are generated on the phone (or use the phone's voice).
+- Tests: 542 unit tests (the clause parser, the loop with real SQLite, every task's spoken solution, typed
+  queue, scoring and scoreboard, Build sessions, the settings change). The browser smoke test builds a task by voice
+  in headless Chrome, checks the query and rows on screen, then types it in typed mode and checks the scoreboard
+  (59 checks, all passing).
+
 ## What to test on the phone
 
-Current round (neural voice, pacing, voice editor): follow the phone test plan doc,
+Current round (build loop and typed mode), parked or at home:
+
+1. Open the app, tap Reload if Home offers it. Settings, Voice quality, Download all drill audio (the new
+   recordings are about 4 MB).
+2. Home, Start Build. Listen to the first task and say "from lots". Then say the rest one clause at a time. Try
+   "tables", "columns of lots", "results", "compare", "undo", "hint" and "show me" along the way.
+3. Do five tasks. For each, note any clause the app heard wrong: the YOU box shows what the recognizer wrote, and
+   the echo says where it put it. Those words become entries in the heard-as list.
+4. Note the wait between the end of your clause and the start of the echo, and whether the echo voice is the same
+   as the prompt voice. Settings, Build and typed can turn the echo off.
+5. Home, Typed set: type the tasks you just built. Check Progress, Build and typed afterwards.
+6. Send back: the misheard clauses, the echo wait, and whether one-clause-at-a-time felt like writing the query.
+
+Earlier round (neural voice, pacing, voice editor): the phone test plan doc,
 https://claude.ai/artifact/DsFEAS5iWzduvBqN3wT7E5 (setup, Parked voice and pacing, the car, the voice editor, what
 to send back, pass criteria). Earlier milestone checks:
 
@@ -200,6 +274,21 @@ to send back, pass criteria). Earlier milestone checks:
 
 ## Known issues and open questions
 
+- Build has only been run with typed and scripted transcripts. How Chrome's recognizer writes clause words (sum
+  and some, where and wear, group by and group buy) is the main unknown; a starter list of those is handled, and
+  phone testing will add to it.
+- Build is Parked only: spec section 12 keeps exact code out of Drive, and that rule was not changed. The loop
+  itself never needs the screen, so opening it in Drive is a one-line change if Joshua decides to.
+- The echo of each clause is new text, so on the phone it is generated by the on-phone voice (speed on the Fold 7
+  unknown) or spoken by the phone's own voice when that model is off. If the wait is too long, turn the echo off.
+- Build is SQL only. pandas tasks, fading (hear a worked solution, supply one missing clause, then two, then all)
+  and reviews that bring a pattern back with a different question are the next steps, not built yet.
+- Typed mode is SQL only; the Python ladders can't be typed yet.
+- A window function column without "as name" takes a following "order by" as part of its window. Give window
+  columns a name ("as r") before ordering the query.
+- Values are matched to the data only for text columns with up to 60 different values; "in a or b" isn't read as a
+  list (say "in a comma b").
+
 - Not yet verified on a real phone: Android restart chimes, gap length between recognizer runs, Bluetooth hands-free
   mic switching (spec section 16 risks). If restart chimes are bad while paused, turn off Settings, Listening,
   "While paused, keep listening for continue" and tap to resume instead.
@@ -230,6 +319,18 @@ to send back, pass criteria). Earlier milestone checks:
   reliable (Talon's or NATO words are safer). Grammar biasing isn't possible in Chrome on Android.
 
 ## Decisions and deviations from the spec
+
+- **Locked decision changed, with Joshua's OK (2026-11-15):** the Languages row was "SQL and Python, equal
+  weight". Now SQL first: new work (the build loop, its tasks, typed mode) is SQL, and the default language mix is
+  SQL. Python stays in the app and can be switched back in; pandas by voice is planned after SQL.
+- **Section 12 unchanged:** Build is Parked only and `drive_ok` is false on every build task (the validator
+  enforces it). Joshua was asked which profiles should get the loop and has not asked for Drive.
+- **Build scoring and help:** a hint caps the score at 2; "done" before the rows match is not graded (it says how
+  the rows differ and keeps going); "show me" scores 0. The app tells you the answer's row and column counts when
+  you ask to compare, never its values.
+- **Build parser choices:** a clause keyword replaces its clause; bare expressions go to SELECT; two column names
+  in a row get a comma; "is" between a column and a value means equals; USING is written when a join is said with
+  one shared column.
 
 - **Locked decision changed, with Joshua's OK (2026-11-14):** the Speech row was "Chrome's built-in speech
   recognition and the phone's text-to-speech voices". Joshua chose the on-device neural voice ("voice option 3")
@@ -293,6 +394,14 @@ to send back, pass criteria). Earlier milestone checks:
   time (served from the app's own origin; Pyodide is runtime-cached by the service worker, not precached).
 - Adding drills: edit `content/<lang>_<unit>.py`, run `npm run validate`, fix every error, commit the generated JSON
   and `reports/validation.md` together with the source.
+- Adding build tasks: `build(...)` from `content/_build.py` at the end of a unit file: the task as a manager would
+  ask it, the reference query, `say` (the reference as spoken steps, "name it x" for a step), a pattern name, hints
+  and a model answer. `npm run validate` runs the reference; `npm test` runs the spoken steps through the parser
+  against it; then `npm run voice` for the new audio.
+- Build loop layout: `src/build/frame.ts` (the clause frame, SQL text, how clauses are said back), `parse.ts`
+  (spoken clause to frame, commands, the heard-as list), `feedback.ts` (row counts, errors, compare, missing-piece
+  hints), `schema.ts` (tables, columns and stored values), `view.ts` (what the screen shows), `format.ts`;
+  `src/engine/build.ts` is the session hook, `src/engine/typed.ts` the typed-mode logic.
 - Deploy: commit everything (including this file), then `npm run deploy`. The script validates drills, runs unit
   tests, builds, pushes the branch, and commits `dist/` plus `.nojekyll` to `gh-pages` (normal commit, no force).
 - Layout follows spec section 10: `src/app` screens, `src/engine` session/scheduler/queue/unlock/progress,
@@ -310,6 +419,11 @@ to send back, pass criteria). Earlier milestone checks:
 - On-phone voice test stand-in: `python3 scripts/make_fake_hf.py` (needs `pip install onnx`), then `npm run smoke`.
 
 ## Next steps
+
+- Joshua's phone test of the build loop and typed mode (list above). From it: the heard-as list, whether the echo
+  stays on, and whether the loop should open in Drive (his call, section 12).
+- Then, in the order agreed on 2026-11-15: fading and varied reviews for the build tasks, more tasks per pattern,
+  pandas by method name, typed mode for Python.
 
 - Joshua's phone test of the neural voice, pacing and the voice editor (test plan doc), then: aliases for misheard
   words, pacing defaults, which alphabet to teach, and whether Keys mode needs an on-device grammar recognizer

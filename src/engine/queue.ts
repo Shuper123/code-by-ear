@@ -27,17 +27,19 @@ export interface QueueInput {
   supportedTypes: ReadonlySet<string>
   /** Practice exactly these drills (from the Drills browser), in this order, with no top-ups. */
   only?: string[]
+  /** A Build session: only build tasks (reviews that are due, then new ones, easiest first). */
+  focus?: 'build'
 }
 
 export function languagesFor(mix: QueueInput['languageMix']): Lang[] {
   return mix === 'sql' ? ['sql'] : mix === 'python' ? ['python'] : ['sql', 'python']
 }
 
-/** Drive allows Level 1 and short Level 2 drills only; Dictate is Parked only (spec section 12). */
+/** Drive allows Level 1 and short Level 2 drills only; Dictate and Build are Parked only (spec section 12). */
 export function eligibleFor(profile: Profile, supported: ReadonlySet<string>) {
   return (d: Drill): boolean => {
     if (!supported.has(d.type)) return false
-    if (profile === 'drive') return d.drive_ok && d.level <= DRIVE_MAX_LEVEL && d.type !== 'dictate'
+    if (profile === 'drive') return d.drive_ok && d.level <= DRIVE_MAX_LEVEL && d.type !== 'dictate' && d.type !== 'build'
     return true
   }
 }
@@ -70,6 +72,20 @@ export class SessionQueue {
         const d = byId.get(id)
         if (d && this.input.supportedTypes.has(d.type)) this.items.push({ drill: d, reason: this.seen.has(id) ? 'review' : 'new' })
       }
+      for (const it of this.items) this.used.add(it.drill.id)
+      return
+    }
+    if (this.input.focus === 'build') {
+      const pool = this.buildPool()
+      const { states, today } = this.input
+      const due = pool
+        .filter((d) => {
+          const s = states.get(d.id)
+          return !!s && s.reps > 0 && s.due <= today
+        })
+        .sort((a, b) => (states.get(a.id)!.due < states.get(b.id)!.due ? -1 : states.get(a.id)!.due > states.get(b.id)!.due ? 1 : 0))
+      const fresh = pool.filter((d) => !this.seen.has(d.id)).slice(0, this.input.newPerSession)
+      this.items = [...due.map((drill): QueueItem => ({ drill, reason: 'review' })), ...fresh.map((drill): QueueItem => ({ drill, reason: 'new' }))]
       for (const it of this.items) this.used.add(it.drill.id)
       return
     }
@@ -139,8 +155,30 @@ export class SessionQueue {
     this.used.add(id)
   }
 
+  /** Build tasks in content order (the units run from simple filters to window functions). */
+  private buildPool(): Drill[] {
+    return this.input.drills.filter((d) => d.type === 'build' && this.eligible(d))
+  }
+
+  private topUpBuild(): QueueItem | null {
+    const pool = this.buildPool()
+    const fresh = pool.find((d) => !this.seen.has(d.id) && !this.used.has(d.id))
+    if (fresh) {
+      this.used.add(fresh.id)
+      return { drill: fresh, reason: 'extra-new' }
+    }
+    const { states } = this.input
+    const early = pool
+      .filter((d) => states.get(d.id)?.reps && !this.used.has(d.id))
+      .sort((a, b) => (states.get(a.id)!.due < states.get(b.id)!.due ? -1 : 1))[0]
+    if (!early) return null
+    this.used.add(early.id)
+    return { drill: early, reason: 'early-review' }
+  }
+
   private topUp(): QueueItem | null {
     if (this.input.only) return null
+    if (this.input.focus === 'build') return this.topUpBuild()
     // more new drills, alternating languages in blocks of three
     for (let tries = 0; tries < this.langs.length; tries++) {
       const lang = this.langs[(this.topUpTurn + tries) % this.langs.length]

@@ -6,10 +6,11 @@ import { LEVEL_NAMES, UNIT_NAMES, UNITS, type Lang } from '../data/types'
 import { addDays, localDate } from '../engine/dates'
 import { dueCount, idbStore, mastery } from '../engine/progress'
 import { ladderProgress, practiceStreak, recentSummary, totalMinutes, weakestUnits, type LadderRow } from '../engine/stats'
+import { typedId, typedStats } from '../engine/typed'
 import type { Attempt, DrillState, SessionRecord } from '../storage/db'
 import { db } from '../storage/db'
 import { BackupCard } from './BackupCard'
-import { goBack } from './nav'
+import { goBack, navigate } from './nav'
 
 interface Data {
   states: Map<string, DrillState>
@@ -79,13 +80,19 @@ export function ProgressScreen() {
   const ladderRows = ladderProgress(ALL_DRILLS, data.attempts)
   const laddersStarted = ladderRows.filter((r) => r.plan !== null || r.sketch !== null || r.dictate !== null).length
   const levels = [1, 2, 3]
+  const typed = typedStats(ALL_DRILLS, data.states, data.attempts, today)
+  const pct = (x: { n: number; firstTry: number }) => (x.n ? `${Math.round((100 * x.firstTry) / x.n)}%` : '–')
+  const best = new Map<string, number>()
+  for (const a of data.attempts) best.set(a.drillId, Math.max(best.get(a.drillId) ?? -1, a.score))
+  const buildTasks = ALL_DRILLS.filter((d) => d.type === 'build')
+  const builtCount = buildTasks.filter((d) => (best.get(d.id) ?? -1) >= 2).length
   const table = (lang: Lang) => (
     <table class="unit-table">
       <thead>
         <tr>
           <th>Unit</th>
           {levels.map((l) => (
-            <th>{LEVEL_NAMES[l]}</th>
+            <th>{l === 2 && lang === 'sql' ? 'Sketch, Build' : LEVEL_NAMES[l]}</th>
           ))}
           <th>Seen</th>
         </tr>
@@ -147,6 +154,46 @@ export function ProgressScreen() {
       <div class="card">
         <h2>Python</h2>
         {table('python')}
+      </div>
+      <div class="card">
+        <h2>Build and typed</h2>
+        <p>
+          Built by voice: <strong>{builtCount}</strong> of {buildTasks.length} tasks
+        </p>
+        <p>
+          Typed, first try: <strong>{pct(typed.recent)}</strong> of the last {typed.recent.n || 20}
+          {typed.allTime.n > typed.recent.n && <> · {pct(typed.allTime)} of all {typed.allTime.n}</>}
+        </p>
+        <p class="faint">
+          The typed first-try rate is the scoreboard: it says whether what you build by voice comes out of your hands too.{' '}
+          {typed.waiting} waiting to be typed.
+        </p>
+        <button class="btn" onClick={() => navigate('typed')}>
+          Typed set
+        </button>
+        <table class="unit-table" style={{ marginTop: '12px' }}>
+          <thead>
+            <tr>
+              <th>Task</th>
+              <th>Voice</th>
+              <th>Typed</th>
+            </tr>
+          </thead>
+          <tbody>
+            {buildTasks.map((d) => (
+              <tr key={d.id}>
+                <td>
+                  <span class="ladder-title">
+                    <span class="faint">{d.unit}</span> {(d.pattern ?? d.id).replace(/-/g, ' ')}
+                  </span>
+                </td>
+                <StepCell score={best.has(d.id) ? best.get(d.id)! : null} />
+                <StepCell score={best.has(typedId(d.id)) ? best.get(typedId(d.id))! : null} />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p class="faint">Best score out of 3. Voice: 3 is a match with no hints. Typed: 3 is a match on the first Run.</p>
       </div>
       <div class="card">
         <h2>Ladders</h2>

@@ -461,5 +461,90 @@
       "In takes a list of values."
     ],
     "model_answer_spoken": "Select name from customers where city is in Riverton or Lakeside."
+  },
+  {
+    "id": "sql-s2-build-001",
+    "lang": "sql",
+    "unit": "S2",
+    "level": 2,
+    "type": "build",
+    "difficulty": 1,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "where",
+      "and"
+    ],
+    "prompt_spoken": "Which night shift lots made more than 400 pieces? Show the lot id and the quantity.",
+    "reference": "SELECT lot_id, qty FROM lots WHERE shift = 'night' AND qty > 400;",
+    "say": [
+      "from lots",
+      "where shift equals night and quantity greater than 400",
+      "select lot id, quantity"
+    ],
+    "pattern": "filter",
+    "order_matters": false,
+    "hints_spoken": [
+      "Everything you need is in the lots table.",
+      "Two conditions joined with and. One on the shift, one on the quantity."
+    ],
+    "model_answer_spoken": "Filter lots to the night shift with a quantity above 400, and select the lot id and quantity."
+  },
+  {
+    "id": "sql-s2-build-002",
+    "lang": "sql",
+    "unit": "S2",
+    "level": 2,
+    "type": "build",
+    "difficulty": 1,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "null",
+      "count"
+    ],
+    "prompt_spoken": "How many lots are missing their shift?",
+    "reference": "SELECT COUNT(*) FROM lots WHERE shift IS NULL;",
+    "say": [
+      "from lots",
+      "where shift is null",
+      "select count star"
+    ],
+    "pattern": "null-check",
+    "order_matters": false,
+    "hints_spoken": [
+      "A missing value is a null.",
+      "You can't compare to null with equals. Say is null."
+    ],
+    "model_answer_spoken": "Count the rows in lots where shift is null."
+  },
+  {
+    "id": "sql-s2-build-003",
+    "lang": "sql",
+    "unit": "S2",
+    "level": 2,
+    "type": "build",
+    "difficulty": 2,
+    "drive_ok": false,
+    "dataset": "factory",
+    "topics": [
+      "dates",
+      "between",
+      "sum"
+    ],
+    "prompt_spoken": "How many pieces were produced in February 2026? Add up the quantity.",
+    "reference": "SELECT SUM(qty) FROM lots WHERE produced_on BETWEEN '2026-02-01' AND '2026-02-28';",
+    "say": [
+      "from lots",
+      "where produced on between February 1st 2026 and February 28th 2026",
+      "select sum of quantity"
+    ],
+    "pattern": "date-range",
+    "order_matters": false,
+    "hints_spoken": [
+      "The date is in produced on.",
+      "Use between, with the first and the last day of the month."
+    ],
+    "model_answer_spoken": "Sum the quantity in lots where produced on is between February 1st and February 28th, 2026."
   }
 ]

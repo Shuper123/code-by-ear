@@ -364,6 +364,76 @@ async def main():
             await page.screenshot(path=f"{OUT}/25-dictate-sql.png", full_page=True)
             check(True, "Dictate worked example 2 (SQL) ran in sql.js and scored correct")
 
+            # ---------- Build loop (SQL): spoken clauses land in their slots, real SQLite runs after every step ----------
+            await page.goto(URL, wait_until="networkidle")
+            steps = ["from lots", "where shift equals night and quantity greater than 400", "HOLD-BUILD", "select lot id, quantity"]
+            await page.evaluate("(src) => { window.__script = (0, eval)(src) }",
+                                "(() => { window.__gate = ''; const q = " + json.dumps(steps) + "; return (last) => {"
+                                "if (!q.length) return null;"
+                                "if (q[0].startsWith('HOLD-')) { if (window.__gate !== q[0]) return null; q.shift(); }"
+                                "return q.shift() } })()")
+            await page.get_by_text("Start Build").click()
+            await page.wait_for_function("window.__said.some(s => s.includes('13 rows.'))", timeout=60000)
+            await page.wait_for_function("document.querySelectorAll('.build-line').length === 3", timeout=10000)
+            said = await page.evaluate("window.__said")
+            check(any(s.startswith("Build session, SQL.") for s in said) and any("Build. Which night shift lots" in s for s in said),
+                  "Start Build opens a Build session on the first task")
+            check("From lots. 120 rows." in said and "Where shift equals night and quantity greater than 400. 13 rows." in said,
+                  "each clause is echoed with the row count the database returned")
+            lines = await page.evaluate("[...document.querySelectorAll('.build-line')].map(e => e.innerText)")
+            check(lines == ["SELECT *", "FROM lots", "WHERE shift = 'night' AND qty > 400"], f"the query shows on screen as it is built ({lines})")
+            check(await page.locator("table.rows tbody tr").count() == 8 and "13 rows" in await page.inner_text("body"),
+                  "the first rows and the row count show after each step")
+            await page.screenshot(path=f"{OUT}/40-build.png", full_page=True)
+            await page.evaluate("window.__gate = 'HOLD-BUILD'")
+            await page.wait_for_function("window.__said.some(s => s.endsWith(\"That's a match.\"))", timeout=60000)
+            await page.wait_for_function("document.body.innerText.includes('last: 3/3')", timeout=10000)
+            check(True, "the last clause makes the rows match the answer, and a match with no hints scores 3")
+            await page.get_by_text("End", exact=True).click()
+            await page.wait_for_timeout(1200)
+
+            # ---------- Typed mode: the task built by voice comes back at the keyboard ----------
+            await page.goto(URL, wait_until="networkidle")
+            await page.wait_for_function("document.body.innerText.includes('Typed set (1)')", timeout=10000)
+            check("1 of 20 tasks passed by voice" in await page.inner_text("body"), "Home shows the build task passed and one task waiting to be typed")
+            await page.get_by_text("Typed set (1)").click()
+            await page.wait_for_selector("textarea.typed-box")
+            check("Which night shift lots made more than 400 pieces" in await page.inner_text("body"), "the typed set opens on the task built by voice")
+            box = page.locator("textarea.typed-box")
+            run_btn = page.get_by_role("button", name="Run", exact=True)
+            await box.fill("SELEC lot_id FROM lots")
+            await run_btn.click()
+            await page.wait_for_selector(".ed-error")
+            check("syntax error" in await page.locator(".ed-error").inner_text(), "a typed query with a typo shows SQLite's own error")
+            await box.fill("SELECT lot_id, qty FROM lots WHERE shift = 'night'")
+            await run_btn.click()
+            await page.wait_for_function("document.body.innerText.includes('not a match')")
+            check("the answer has 13" in await page.inner_text("body"), "a typed query with the wrong rows says how they differ")
+            await box.fill("SELECT lot_id, qty FROM lots WHERE shift = 'night' AND qty > 400")
+            await run_btn.click()
+            await page.wait_for_function("document.body.innerText.includes('Match on try 3')")
+            await page.screenshot(path=f"{OUT}/41-typed.png", full_page=True)
+            await page.get_by_role("button", name="Next", exact=True).click()
+            await page.wait_for_function("document.body.innerText.includes('Typed set done')")
+            check("First try: 0 of 1" in await page.inner_text("body"), "the set ends with the first-try count")
+            # any task can be typed from Drills; this one matches on the first Run
+            await page.goto(URL, wait_until="networkidle")
+            await page.get_by_text("Drills", exact=True).first.click()
+            await page.locator(".drill-item", has_text="sql-s2-build-002").get_by_text("Type it").click()
+            await page.wait_for_selector("textarea.typed-box")
+            await page.locator("textarea.typed-box").fill("select count(*) from lots where shift is null")
+            await page.get_by_role("button", name="Run", exact=True).click()
+            await page.wait_for_function("document.body.innerText.includes('Match on the first try')")
+            await page.get_by_role("button", name="Show answer").click()
+            check(await page.get_by_text("SELECT COUNT(*)").count() >= 1, "Show answer lays the reference query out")
+            await page.goto(URL, wait_until="networkidle")
+            await page.get_by_text("Progress", exact=True).first.click()
+            await page.wait_for_timeout(800)
+            body = await page.inner_text("body")
+            check("Built by voice: 1 of 20" in body and "Typed, first try: 50% of the last 2" in body,
+                  "Progress shows tasks built by voice and the typed first-try rate")
+            await page.screenshot(path=f"{OUT}/42-progress-build.png", full_page=True)
+
             # ---------- Neural voice: pre-recorded drill audio, pacing, and the on-phone model ----------
             voice_hits = []
             page.on("response", lambda r: voice_hits.append(r.status) if "/voice/af_heart/" in r.url else None)
@@ -380,6 +450,18 @@ async def main():
                   f"pre-recorded clips load ({len(voice_hits)} fetched, statuses {sorted(set(voice_hits))})")
             await page.get_by_text("End", exact=True).click()
             await page.wait_for_timeout(500)
+            # a build task said the way its model answer says it needs no on-phone voice: every echo, row count and
+            # the match are in the pre-recorded pack
+            await practice(page, "sql-s2-build-002",
+                           "(() => { const q = ['from lots', 'where shift is null', 'select count star']; return (last) => q.length ? q.shift() : null })()",
+                           None)
+            await page.wait_for_function("window.__cbeVoiceLog.some(e => e.text.endsWith(\"That's a match.\"))", timeout=90000)
+            log = await page.evaluate("window.__cbeVoiceLog")
+            upto = next(i for i, e in enumerate(log) if e["text"].endswith("That's a match.")) + 1
+            build_said = [e["text"] for e in log[:upto]]
+            check(all(e["engine"] == "neural" for e in log[:upto]) and "From lots. 120 rows." in build_said,
+                  f"a build task is spoken from pre-recorded audio, echoes and row counts included ({build_said[-3:]})")
+            await page.wait_for_timeout(1500)
             if FAKE_HF.exists():
                 await page.context.route("https://huggingface.co/**", serve_fake_hf)
                 await set_settings(page, {"voiceEngine": "neural", "neuralModel": "small"})

@@ -3,7 +3,7 @@
 // scripts/validate_drills.py, which runs every one of them.
 
 export type Lang = 'sql' | 'python'
-export type DrillType = 'predict' | 'explain' | 'spot_bug' | 'plan' | 'concept' | 'sketch' | 'dictate'
+export type DrillType = 'predict' | 'explain' | 'spot_bug' | 'plan' | 'concept' | 'sketch' | 'dictate' | 'build'
 export type DatasetName = 'factory' | 'shop'
 
 export interface PyTest {
@@ -31,7 +31,9 @@ export interface Drill {
   strict_numbers?: boolean // predict: 3 and 3.0 are different answers
   rubric?: string[] // key points for AI grading
   bug?: { line: number; fix_spoken: string; fixed_code: string }
-  reference?: string // Sketch/Dictate: reference solution
+  reference?: string // Sketch/Dictate/Build: reference solution
+  say?: string[] // Build: the reference as spoken clauses, one per step ("from lots", "group by machine id")
+  pattern?: string // Build: the query pattern this task practices ("top-n", "anti-join")
   order_matters?: boolean
   signature?: string // Python Sketch/Dictate
   function_name?: string // Python Sketch/Dictate: function the tests call

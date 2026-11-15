@@ -9,6 +9,7 @@ import { ProgressScreen } from './ProgressScreen'
 import { SessionScreen } from './SessionScreen'
 import { SettingsScreen } from './SettingsScreen'
 import { Spike } from './Spike'
+import { TypedScreen } from './TypedScreen'
 
 initNav()
 
@@ -42,7 +43,11 @@ export function App() {
       break
     case 'session':
       screen = noticeAccepted ? (
-        <SessionScreen profile={route.params?.profile === 'drive' ? 'drive' : 'parked'} drillId={route.params?.drill} />
+        <SessionScreen
+          profile={route.params?.profile === 'drive' ? 'drive' : 'parked'}
+          drillId={route.params?.drill}
+          focus={route.params?.focus === 'build' ? 'build' : undefined}
+        />
       ) : (
         <Home />
       )
@@ -52,6 +57,9 @@ export function App() {
       break
     case 'drills':
       screen = <DrillsScreen />
+      break
+    case 'typed':
+      screen = <TypedScreen drillId={route.params?.drill} />
       break
     default:
       screen = <Home />

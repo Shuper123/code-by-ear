@@ -17,6 +17,7 @@ import {
 } from '../speech/commands'
 import { lineCountPhrase, type SpeechStyle } from '../speech/chunks'
 import { codeLines, type CodeLine } from '../speech/phrasing'
+import type { BuildSnapshot } from '../build/view'
 import type { EditorSnapshot } from '../verbal/editor'
 import { parseRepeatLine } from '../speech/commands'
 import type { CueName } from '../speech/cues'
@@ -42,11 +43,12 @@ export interface HearOptions {
   endOnPiece?: boolean
 }
 
-/** What the Parked screen shows under the prompt: code, a note, or the live dictation editor. */
+/** What the Parked screen shows under the prompt: code, a note, the live dictation editor, or the query being built. */
 export interface ViewDetail {
   code?: string
   note?: string
   editor?: EditorSnapshot
+  build?: BuildSnapshot
 }
 
 export interface EngineDeps {
@@ -77,8 +79,12 @@ export interface TypeHook {
   intro?(ctx: DrillContext): Promise<void>
   /** Replaces the spoken prompt. */
   promptText?(d: Drill): string
+  /** Replaces the model answer read out for "I don't know" and "answer" before any attempt. */
+  modelAnswer?(d: Drill): string
   /** Thinking time before the prompt counts as unanswered. */
   thinkMs?: number
+  /** Hand over the first phrase as soon as the recognizer finishes it, without waiting out the silence window. */
+  firstPiece?: boolean
   /** Grade an answer; 'redo' sends the learner back to answering. */
   grade(ctx: DrillContext, transcript: string): Promise<'done' | 'redo'>
 }
@@ -89,6 +95,8 @@ export interface EngineConfig {
   drills: Drill[]
   /** Practice exactly these drill ids (Drills browser). */
   only?: string[]
+  /** A Build session: only build tasks. */
+  focus?: 'build'
 }
 
 export type Phase =
@@ -500,6 +508,7 @@ export class SessionEngine {
       seed: Math.floor(this.deps.now() / 86400000),
       supportedTypes: this.deps.supportedTypes,
       only: this.cfg.only,
+      focus: this.cfg.focus,
     })
     this.deps.onQueue?.(this.queue.peekAll().map((i) => i.drill))
     this.startedAt = this.deps.now()
@@ -541,6 +550,10 @@ export class SessionEngine {
   private async intro() {
     if (this.cfg.only) {
       await this.say(this.cfg.only.length === 1 ? 'One drill.' : `${this.cfg.only.length} drills.`)
+      return
+    }
+    if (this.cfg.focus === 'build') {
+      await this.say("Build session, SQL. Say stop session when you're done.")
       return
     }
     const langs = languagesFor(this.cfg.settings.languageMix)
@@ -598,7 +611,7 @@ export class SessionEngine {
           await this.speakPrompt(d, hook?.promptText?.(d))
         }
         skipPrompt = false
-        const r = await this.hear(ANSWER_COMMANDS, { thinkMs: hook?.thinkMs })
+        const r = await this.hear(ANSWER_COMMANDS, { thinkMs: hook?.thinkMs, endOnPiece: hook?.firstPiece })
         if (r.error) {
           await this.handleSttError(r.error)
           continue
@@ -627,7 +640,8 @@ export class SessionEngine {
           }
           if (cmd === 'idk' || cmd === 'answer') {
             await this.cue('incorrect')
-            await this.say(cmd === 'idk' ? `No problem. ${d.model_answer_spoken}` : d.model_answer_spoken)
+            const model = hook?.modelAnswer?.(d) ?? d.model_answer_spoken
+            await this.say(cmd === 'idk' ? `No problem. ${model}` : model)
             await this.record(d, 0, 'self', '', hints.n)
             return
           }

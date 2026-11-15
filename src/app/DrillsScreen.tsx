@@ -5,6 +5,7 @@ import { ALL_DRILLS } from '../data/drills'
 import { UNIT_NAMES, UNITS, type Drill, type Lang } from '../data/types'
 import { localDate } from '../engine/dates'
 import { idbStore } from '../engine/progress'
+import { typedTasks } from '../engine/typed'
 import { unlockAudio } from '../speech/cues'
 import type { DrillState } from '../storage/db'
 import { goBack, navigate } from './nav'
@@ -19,8 +20,10 @@ const TYPES: [string, string][] = [
   ['concept', 'Concept'],
   ['sketch', 'Sketch'],
   ['dictate', 'Dictate'],
+  ['build', 'Build'],
 ]
 const TYPE_NAME = Object.fromEntries(TYPES.slice(1))
+const TYPEABLE = new Set(typedTasks(ALL_DRILLS).map((d) => d.id))
 
 const STATUSES: [Status, string][] = [
   ['', 'Any status'],
@@ -153,7 +156,7 @@ export function DrillsScreen() {
         </label>
         <p class="faint">
           {list.length} {list.length === 1 ? 'drill' : 'drills'}. Tap a drill to see its code; Practice runs it in a Parked
-          session, whatever its lock.
+          session, whatever its lock. Type it opens the same task at the keyboard.
         </p>
       </div>
       <div class="card">
@@ -185,9 +188,16 @@ export function DrillsScreen() {
                   </div>
                 )}
               </div>
-              <button class="btn" disabled={!playable} onClick={() => practice(d.id)}>
-                {playable ? 'Practice' : 'Soon'}
-              </button>
+              <div class="row" style={{ flexWrap: 'nowrap' }}>
+                {TYPEABLE.has(d.id) && (
+                  <button class="btn" onClick={() => navigate('typed', { drill: d.id })}>
+                    Type it
+                  </button>
+                )}
+                <button class="btn" disabled={!playable} onClick={() => practice(d.id)}>
+                  {playable ? 'Practice' : 'Soon'}
+                </button>
+              </div>
             </div>
           )
         })}

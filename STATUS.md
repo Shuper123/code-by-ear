@@ -152,7 +152,9 @@ After M4 (requested by Joshua on 2026-11-14)
 
 ## What to test on the phone
 
-See the phone test plan doc (linked in the build chat) for the full order. In short:
+Current round (neural voice, pacing, voice editor): follow the phone test plan doc,
+https://claude.ai/artifact/DsFEAS5iWzduvBqN3wT7E5 (setup, Parked voice and pacing, the car, the voice editor, what
+to send back, pass criteria). Earlier milestone checks:
 
 1. M0 list: install from Chrome, run the voice loop and the long-answer test in Voice check, at home and in the car.
 2. Settings, Languages: SQL only. Start Drive at home or parked first; let it run about 20 minutes without touching

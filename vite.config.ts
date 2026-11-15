@@ -33,7 +33,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,json,sql,wasm,webmanifest}'],
-        globIgnores: ['runtimes/pyodide/**'],
+        // Big or optional files are cached when first used instead of on install: Pyodide, the on-phone
+        // voice runtime and worker, and the pre-rendered drill audio (Settings can fetch it all at once).
+        // (Vite also emits an unused hashed copy of the ONNX Runtime wasm; the worker loads runtimes/ort/.)
+        globIgnores: ['runtimes/pyodide/**', 'runtimes/ort/**', 'voice/**', 'assets/kokoro.worker-*.js', 'assets/ort-wasm-*.wasm'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         cleanupOutdatedCaches: true,
         runtimeCaching: [
@@ -41,6 +44,16 @@ export default defineConfig({
             urlPattern: ({ url }) => url.pathname.includes('/runtimes/pyodide/'),
             handler: 'CacheFirst',
             options: { cacheName: 'pyodide-runtime', expiration: { maxEntries: 40 } },
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.includes('/code-by-ear/voice/'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'voice-pack', expiration: { maxEntries: 20000 } },
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.includes('/runtimes/ort/') || /\/assets\/kokoro\.worker-/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: { cacheName: 'voice-runtime', expiration: { maxEntries: 10 } },
           },
         ],
       },

@@ -75,3 +75,35 @@ def run_code_json(code):
     r = run_code(code)
     r.pop("namespace", None)
     return json.dumps(r, default=repr)
+
+
+def check_syntax(code):
+    """Is the code valid Python so far? 'incomplete' means nothing is wrong yet, it just isn't finished
+    (an open block or bracket, or an error right at the end where you're still typing)."""
+    import codeop
+    if not code.strip():
+        return {"status": "incomplete"}
+    try:
+        compile(code, "<dictation>", "exec")
+        return {"status": "ok"}
+    except SyntaxError as e:
+        err = e
+    try:
+        compile(code, "<dictation>", "exec", flags=codeop.PyCF_ALLOW_INCOMPLETE_INPUT | codeop.PyCF_DONT_IMPLY_DEDENT)
+    except SyntaxError as e2:
+        if e2.msg == "incomplete input":
+            return {"status": "incomplete"}
+    lines = code.rstrip().split("\n")
+    at_end = err.lineno is not None and err.lineno >= len(lines) and (err.offset or 0) >= len(lines[-1].rstrip())
+    return {
+        "status": "incomplete" if at_end else "error",
+        "message": f"{type(err).__name__}: {err.msg}",
+        "line": err.lineno,
+        "col": err.offset,
+    }
+
+
+def check_syntax_json(code):
+    import json
+    return json.dumps(check_syntax(code))
+

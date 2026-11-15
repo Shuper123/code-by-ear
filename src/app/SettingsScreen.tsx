@@ -4,6 +4,7 @@ import { getApiKey, MODELS, resetSettings, setApiKey, updateSettings, useSetting
 import { chooseVoice, speak, waitForVoices } from '../speech/tts'
 import { buildLabel } from '../version'
 import { AiChecks } from './AiChecks'
+import { VoiceSettings } from './VoiceSettings'
 import { goBack } from './nav'
 
 function NumberField(props: {
@@ -154,8 +155,11 @@ export function SettingsScreen() {
 
       <AiChecks />
 
+      <VoiceSettings s={s} />
+
       <div class="card">
-        <h2>Voice</h2>
+        <h2>Phone voice</h2>
+        <p class="faint">Used when the neural voice is off, and for anything it can't say yet.</p>
         <label class="field">
           <span>Voice ({voices.length} available)</span>
           <select value={chosen?.voiceURI ?? ''} onChange={(e) => set({ voiceURI: (e.target as HTMLSelectElement).value })}>
@@ -185,9 +189,21 @@ export function SettingsScreen() {
             })
           }
         >
-          Test voice
+          Test phone voice
         </button>
         <NumberField label="Tone volume" value={s.cueVolume} min={0.05} max={1} step={0.05} onChange={(v) => set({ cueVolume: Math.round(v * 100) / 100 })} />
+      </div>
+
+      <div class="card">
+        <h2>Dictation</h2>
+        <label class="field">
+          <span>Dictate drills start in</span>
+          <select value={s.dictateMode} onChange={(e) => set({ dictateMode: (e.target as HTMLSelectElement).value as Settings['dictateMode'] })}>
+            <option value="code">Code mode: say code in words, formatted for you</option>
+            <option value="keys">Keys mode: every word is a keystroke</option>
+          </select>
+        </label>
+        <p class="faint">Switch any time by saying "keys mode" or "code mode".</p>
       </div>
 
       <div class="card">

@@ -12,14 +12,16 @@ import { getSettings, updateSettings } from '../settings'
 import type { Command } from '../speech/commands'
 import { playCue } from '../speech/cues'
 import { listen } from '../speech/stt'
-import { speak, stopSpeaking } from '../speech/tts'
+import { ensureNeural } from '../speech/neural'
+import { prefetchDrills, voice } from '../speech/voice'
 import type { Profile } from '../storage/db'
 import { AiServices } from '../ai/services'
 import { makeDictateHook } from '../engine/dictate'
-import { makeSketchHook, type Runners } from '../engine/sketch'
-import { loadPython, pythonState, runPythonTests } from '../runtimes/py'
+import { classifySqlError, makeSketchHook, type Runners } from '../engine/sketch'
+import { checkPythonSyntax, loadPython, pythonState, runPythonTests } from '../runtimes/py'
 import { runSql } from '../runtimes/sql'
 import { goBack, navigate } from './nav'
+import { EditorView } from './EditorView'
 import { VerbalCheatSheet } from './VerbalCheatSheet'
 
 /** Drill types this build can run in sessions. */
@@ -30,6 +32,12 @@ export const runners: Runners = {
   runPyTests: (code, fn, tests) => runPythonTests(code, fn, tests),
   pythonReady: () => pythonState() === 'ready',
   preloadPython: () => void loadPython().catch(() => {}),
+  loadPython: () => loadPython(),
+  checkSyntax: async (lang, dataset, code) => {
+    if (lang === 'python') return checkPythonSyntax(code)
+    const r = await runSql(dataset, code)
+    return r.ok ? { status: 'ok' } : classifySqlError(r.error)
+  },
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -77,15 +85,21 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
     const s = getSettings()
     const ai = new AiServices()
     const deps: EngineDeps = {
-      speak: (text, rate, signal) => speak(text, { rate, voiceURI: s.voiceURI }, signal),
-      stopSpeaking,
+      speak: (text, rate, signal, style) => voice.speak(text, rate, signal, style),
+      sleep: (ms, signal) =>
+        new Promise<void>((resolve) => {
+          const t = setTimeout(resolve, ms)
+          signal.addEventListener('abort', () => (clearTimeout(t), resolve()), { once: true })
+        }),
+      onQueue: (drills) => void prefetchDrills(drills),
+      stopSpeaking: () => voice.stop(),
       listen,
       cue: (name) => playCue(name, s.cueVolume),
       now: () => Date.now(),
       today: () => localDate(),
       store: idbStore,
       grader: ai,
-      typeHooks: { sketch: makeSketchHook(ai, runners), dictate: makeDictateHook(ai, runners) },
+      typeHooks: { sketch: makeSketchHook(ai, runners), dictate: makeDictateHook(ai, runners, { startMode: () => getSettings().dictateMode }) },
       onRateChange: (p, rate) => void updateSettings(p === 'drive' ? { rateDrive: rate } : { rateParked: rate }),
       supportedTypes: SUPPORTED_TYPES,
     }
@@ -113,6 +127,7 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
         if (v.phase === 'recap' || v.phase === 'ended') mediaButtons.stop()
       })
     }
+    ensureNeural(s)
     void holdWakeLock()
     const onVis = () => {
       if (document.visibilityState === 'hidden') engine.requestPause('hidden')
@@ -128,7 +143,7 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
       unsubButtons()
       if (s.mediaButtons) mediaButtons.stop()
       engine.quit()
-      stopSpeaking()
+      voice.stop()
       void releaseWakeLock()
     }
   }, [profile, drillId])
@@ -228,6 +243,7 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
           <p style={{ fontSize: '1.05rem' }}>{d.prompt_spoken}</p>
         </div>
       )}
+      {view.detail.editor && d && <EditorView ed={view.detail.editor} lang={d.lang} />}
       <div class="card">
         <div class="step">You</div>
         <div class="transcript">
@@ -248,11 +264,18 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
             <button class="btn primary" disabled={view.phase !== 'listening'} onClick={() => engine.injectText('run it')}>
               Run it
             </button>
+            <button class="btn" disabled={view.phase !== 'listening'} onClick={() => engine.injectText('check')}>
+              Check
+            </button>
+            <button class="btn" disabled={view.phase !== 'listening'} onClick={() => engine.injectText('scratch that')}>
+              Undo
+            </button>
             <button class="btn" disabled={view.phase !== 'listening'} onClick={() => engine.injectText('read it back')}>
               Read it back
             </button>
-            <button class="btn" disabled={view.phase !== 'listening'} onClick={() => engine.injectText('scratch that')}>
-              Scratch that
+            <button class="btn" disabled={view.phase !== 'listening'}
+              onClick={() => engine.injectText(view.detail.editor?.mode === 'keys' ? 'code mode' : 'keys mode')}>
+              {view.detail.editor?.mode === 'keys' ? 'Code mode' : 'Keys mode'}
             </button>
           </div>
         )}
@@ -274,7 +297,7 @@ export function SessionScreen({ profile, drillId }: { profile: Profile; drillId?
           </button>
         </div>
       </div>
-      {view.detail.code && (
+      {view.detail.code && !view.detail.editor && (
         <div class="card">
           <div class="step">{d?.type === 'dictate' ? 'Your code' : 'Your code, converted'}</div>
           <div class="code" style={{ marginTop: '8px' }}>

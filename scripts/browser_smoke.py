@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 from playwright.async_api import async_playwright
 
@@ -21,6 +22,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = sys.argv[1] if len(sys.argv) > 1 else "/tmp/cbe-smoke"
 CHROME = os.environ.get("CHROME", "/usr/bin/google-chrome")
 URL = "http://localhost:4173/code-by-ear/"
+EDITOR_LINES = "[...document.querySelectorAll('.ed-line .ed-text')].map(e => e.innerText.replace(/\\u00a0/g, ' '))"
 
 FAKE_SPEECH = r"""
 (() => {
@@ -78,6 +80,8 @@ FAKE_SPEECH = r"""
   window.SpeechRecognition = FakeRecognition;
   window.webkitSpeechRecognition = FakeRecognition;
 
+  window.__cbeVoiceLog = [];
+
   // Media Session: keep a handle on the handlers the app registers, so the test can "press" buttons.
   window.__media = {};
   if (navigator.mediaSession) {
@@ -90,6 +94,31 @@ FAKE_SPEECH = r"""
 
 FAKE_KEY = "sk-ant-test-not-a-real-key"
 api_calls = []
+
+
+FAKE_HF = Path(__file__).resolve().parent.parent / "build/fake-hf"
+
+
+async def serve_fake_hf(route):
+    rel = route.request.url.split("huggingface.co/", 1)[1].replace("/resolve/main/", "/")
+    f = FAKE_HF / rel
+    if f.exists():
+        await route.fulfill(status=200, body=f.read_bytes(), headers={"Access-Control-Allow-Origin": "*", "Content-Length": str(f.stat().st_size)})
+    else:
+        await route.fulfill(status=404, body=b"not found", headers={"Access-Control-Allow-Origin": "*"})
+
+
+async def set_settings(page, patch):
+    await page.evaluate("""async (patch) => {
+      const req = indexedDB.open('code-by-ear', 1);
+      await new Promise(r => req.onsuccess = r);
+      const tx = req.result.transaction('kv', 'readwrite');
+      const st = tx.objectStore('kv'); const g = st.get('settings');
+      await new Promise(r => g.onsuccess = r);
+      st.put({ ...(g.result || {}), ...patch }, 'settings');
+      await new Promise(r => tx.oncomplete = r);
+      req.result.close();
+    }""", patch)
 
 
 async def fake_anthropic(route):
@@ -145,7 +174,8 @@ async def practice(page, drill_id, script, wait_for, timeout_ms=60000):
     await page.wait_for_timeout(200)
     item = page.locator(".drill-item", has_text=drill_id)
     await item.get_by_text("Practice").click()
-    await page.wait_for_function(f"window.__said.some(s => s.includes({json.dumps(wait_for)}))", timeout=timeout_ms)
+    if wait_for is not None:
+        await page.wait_for_function(f"window.__said.some(s => s.includes({json.dumps(wait_for)}))", timeout=timeout_ms)
 
 
 async def main():
@@ -168,6 +198,8 @@ async def main():
             await ctx.add_init_script(FAKE_SPEECH)
             page = await ctx.new_page()
             page.on("console", lambda m: errors.append(f"{m.type}: {m.text}") if m.type == "error" else None)
+            alllogs = []
+            page.on("console", lambda m: alllogs.append(f"{m.type}: {m.text}"))
             page.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
             await page.goto(URL, wait_until="networkidle")
             await page.get_by_text("I understand").click()
@@ -184,7 +216,7 @@ async def main():
               const st = tx.objectStore('kv');
               const g = st.get('settings');
               await new Promise(r => g.onsuccess = r);
-              st.put({ ...(g.result || {}), silenceParkedMs: 1500, silenceDriveMs: 1500 }, 'settings');
+              st.put({ ...(g.result || {}), silenceParkedMs: 1500, silenceDriveMs: 1500, voiceEngine: 'phone', linePauseMs: 300 }, 'settings');
               await new Promise(r => tx.oncomplete = r);
             }""")
             await page.reload(wait_until="networkidle")
@@ -271,17 +303,27 @@ async def main():
                            f"(() => {{ window.__hold = true; const q = {json.dumps(utterances)}; return (last) => "
                            "!q.length || (q[0] === 'run it' && window.__hold) ? null : q.shift() })()",
                            "Dictate. Write a function")
-            await page.wait_for_function("[...document.querySelectorAll('.code')].some(e => e.innerText.includes('return total'))",
-                                         timeout=30000)
-            body = await page.inner_text("body")
-            check("def sum_evens(nums):\n    total = 0\n    for n in nums:\n        if n % 2 == 0:\n"
-                  "            total += n\n    return total" in body, "Dictate shows worked example 1, indented, while you dictate")
+            await page.wait_for_function(f"{EDITOR_LINES}.some(l => l.includes('return total'))", timeout=30000)
+            lines = await page.evaluate(EDITOR_LINES)
+            check("\n".join(lines).rstrip() == "def sum_evens(nums):\n    total = 0\n    for n in nums:\n        if n % 2 == 0:\n"
+                  "            total += n\n    return total", "Dictate shows worked example 1, indented, while you dictate")
+            check(await page.locator(".editor .caret").count() == 1 and await page.locator(".ruler").count() == 1,
+                  "the editor shows a cursor and a character ruler")
             await page.get_by_text("Verbal Syntax cheat sheet").click()
             await page.wait_for_timeout(200)
-            check(await page.get_by_text("undo your last utterance").is_visible(), "Dictate cheat sheet opens")
+            check(await page.get_by_text("step back or forward one change").is_visible(), "Dictate cheat sheet opens")
             await page.screenshot(path=f"{OUT}/23-dictate-code.png", full_page=True)
             await page.evaluate("window.__hold = false")
-            await page.wait_for_function("window.__said.some(s => s.includes('Correct. All the tests pass.'))", timeout=120000)
+            try:
+                await page.wait_for_function("window.__said.some(s => s.includes('Correct. All the tests pass.'))", timeout=120000)
+            except Exception:
+                print("DEBUG said:", await page.evaluate("window.__said.slice(-8)"))
+                print("DEBUG heard:", await page.evaluate("window.__heard.slice(-6)"))
+                print("DEBUG body:", (await page.inner_text("body"))[:300])
+                print("DEBUG editor status:", await page.evaluate("[...document.querySelectorAll('.card p.small')].map(e => e.innerText).join(' | ')"))
+                print("DEBUG errors:", errors[-10:])
+                print("DEBUG logs:", alllogs[-15:])
+                raise
             await page.screenshot(path=f"{OUT}/24-dictate-passed.png", full_page=True)
             check(True, "Dictate worked example 1 (Python) ran in Pyodide and scored correct")
 
@@ -290,10 +332,67 @@ async def main():
             await practice(page, "sql-s3-dictate-013",
                            f"(() => {{ const q = {json.dumps([sql_said, 'run it'])}; return (last) => q.length ? q.shift() : null }})()",
                            "Correct. Your rows match the answer.")
-            check(await page.get_by_text("SELECT part_id, SUM(qty) AS total FROM lots GROUP BY part_id ORDER BY total DESC LIMIT 3").count() >= 1,
+            check((await page.evaluate(EDITOR_LINES))[0] == "SELECT part_id, SUM(qty) AS total FROM lots GROUP BY part_id ORDER BY total DESC LIMIT 3",
                   "Dictate worked example 2 (SQL) shows the exact query")
+
+            # ---------- Voice editor: live errors, Keys mode, moving by line and character, plain-English edits ----------
+            steps = [
+                "def snake sum evens open paren nums close paren", "next total equals zero",  # line 1 lacks its colon
+                "HOLD-ERROR", "go to line one", "keys mode", "colon", "go to line two", "indent", "code mode",
+                "next for n in nums colon next if n mod two is equal to zero colon next count plus equals n next back back return total",
+                "change count to total", "edit at line five character thirteen", "HOLD-KEYS", "where am I", "run it",
+            ]
+            await practice(page, "py-p3-dictate-013",
+                           "(() => { window.__gate = ''; const q = " + json.dumps(steps) + "; return (last) => {"
+                           "if (!q.length) return null;"
+                           "if (q[0].startsWith('HOLD-')) { if (window.__gate !== q[0]) return null; q.shift(); }"
+                           "return q.shift() } })()",
+                           "Dictate. Write a function")
+            await page.wait_for_function("document.querySelector('.ed-error') && document.querySelector('.ed-error').innerText.includes(\"expected ':'\")", timeout=60000)
+            check(await page.locator(".ed-err").count() == 1, "a Python syntax error shows live, on its line, in Python's words")
+            await page.screenshot(path=f"{OUT}/26-editor-error.png", full_page=True)
+            await page.evaluate("window.__gate = 'HOLD-ERROR'")
+            await page.wait_for_function(f"{EDITOR_LINES}.some(l => l.includes('return total')) && {EDITOR_LINES}.some(l => l.trim() === 'total += n')", timeout=60000)
+            await page.wait_for_function("document.querySelector('.ed-line.ed-cur') && document.body.innerText.includes('Line 5, character 13')", timeout=30000)
+            check(await page.locator(".ed-error").count() == 0, "fixing it in Keys mode clears the error")
+            check(await page.get_by_text("Code mode", exact=True).first.is_visible(), "the editor shows which mode it's in")
+            await page.screenshot(path=f"{OUT}/27-editor-cursor.png", full_page=True)
+            await page.evaluate("window.__gate = 'HOLD-KEYS'")
+            await page.wait_for_function("window.__said.some(s => s.startsWith('Line 5, character 13, '))", timeout=30000)
+            await page.wait_for_function("window.__said.some(s => s.includes('Correct. All the tests pass.'))", timeout=120000)
+            check(True, "a plain-English edit (change count to total) and the run pass")
             await page.screenshot(path=f"{OUT}/25-dictate-sql.png", full_page=True)
             check(True, "Dictate worked example 2 (SQL) ran in sql.js and scored correct")
+
+            # ---------- Neural voice: pre-recorded drill audio, pacing, and the on-phone model ----------
+            voice_hits = []
+            page.on("response", lambda r: voice_hits.append(r.status) if "/voice/af_heart/" in r.url else None)
+            await set_settings(page, {"voiceEngine": "neural", "neuralModel": "off"})
+            await practice(page, "py-p1-predict-001", "(last) => null", None)
+            await page.wait_for_function("window.__cbeVoiceLog.filter(e => e.engine === 'neural' && e.style === 'code').length >= 3", timeout=90000)
+            log = await page.evaluate("window.__cbeVoiceLog")
+            check(all(e["engine"] == "neural" for e in log), f"the drill was spoken entirely from pre-recorded audio ({len(log)} utterances)")
+            check(any(e["text"] == "Python. Three lines." for e in log), "the code is announced with its line count")
+            check(len(voice_hits) >= 5 and all(h in (200, 206, 304) for h in voice_hits),
+                  f"pre-recorded clips load ({len(voice_hits)} fetched, statuses {sorted(set(voice_hits))})")
+            await page.get_by_text("End", exact=True).click()
+            await page.wait_for_timeout(500)
+            if FAKE_HF.exists():
+                await page.context.route("https://huggingface.co/**", serve_fake_hf)
+                await set_settings(page, {"voiceEngine": "neural", "neuralModel": "small"})
+                await page.goto(URL, wait_until="networkidle")
+                await page.get_by_text("Settings", exact=True).first.click()
+                await page.wait_for_function("window.__cbeNeural && window.__cbeNeural.status.state === 'ready'", timeout=300000)
+                await page.evaluate("window.__cbeVoiceLog = []")
+                await page.evaluate("window.__cbeVoice.speak('Nobody recorded this sentence ahead of time.', 1)")
+                log = await page.evaluate("window.__cbeVoiceLog")
+                status = await page.evaluate("window.__cbeNeural.status")
+                check(log and log[0]["engine"] == "neural" and status.get("lastGenMs"),
+                      f"the on-phone voice speaks a new sentence ({status.get('device')}, {status.get('lastGenMs')} ms)")
+                await page.screenshot(path=f"{OUT}/28-voice-settings.png", full_page=True)
+            else:
+                print("skip on-phone voice (run scripts/make_fake_hf.py to test it)")
+            await set_settings(page, {"voiceEngine": "phone", "neuralModel": "off"})
 
             # ---------- M4: Progress, Drills browser, export and import, media buttons ----------
             await page.goto(URL, wait_until="networkidle")
@@ -402,4 +501,5 @@ async def main():
     sys.exit(1 if failures else 0)
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

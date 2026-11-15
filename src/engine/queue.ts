@@ -95,7 +95,7 @@ export class SessionQueue {
           return sa.due === sb.due ? sa.ease - sb.ease : sa.due < sb.due ? -1 : 1
         })
         .map((drill): QueueItem => ({ drill, reason: 'review' }))
-      const fresh = pickNewDrills(this.input.drills, lang, this.seen, newCounts.get(lang) ?? 0, this.eligible).map(
+      const fresh = pickNewDrills(this.input.drills, lang, this.seen, newCounts.get(lang) ?? 0, this.eligible, this.input.profile === 'drive').map(
         (drill): QueueItem => ({ drill, reason: 'new' }),
       )
       perLang.set(lang, [...due, ...fresh])
@@ -144,7 +144,7 @@ export class SessionQueue {
     // more new drills, alternating languages in blocks of three
     for (let tries = 0; tries < this.langs.length; tries++) {
       const lang = this.langs[(this.topUpTurn + tries) % this.langs.length]
-      const extra = pickNewDrills(this.input.drills, lang, new Set([...this.seen, ...this.used]), 3, this.eligible)
+      const extra = pickNewDrills(this.input.drills, lang, new Set([...this.seen, ...this.used]), 3, this.eligible, this.input.profile === 'drive')
       if (extra.length) {
         this.topUpTurn = (this.topUpTurn + tries + 1) % this.langs.length
         for (const d of extra) {

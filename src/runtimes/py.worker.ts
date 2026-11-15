@@ -7,7 +7,7 @@ interface PyodideLike {
 }
 interface Msg {
   id: number
-  kind: 'load' | 'tests' | 'run'
+  kind: 'load' | 'tests' | 'run' | 'check'
   indexURL: string
   code?: string
   fn?: string
@@ -40,6 +40,9 @@ ctx.onmessage = async (e) => {
     const py = await ensure(indexURL)
     if (kind === 'load') {
       ctx.postMessage({ id, ok: true })
+    } else if (kind === 'check') {
+      const out = py.globals.get('check_syntax_json')(e.data.code ?? '')
+      ctx.postMessage({ id, ok: true, result: JSON.parse(out) })
     } else if (kind === 'tests') {
       const out = py.globals.get('run_tests_json')(e.data.code ?? '', e.data.fn ?? '', JSON.stringify(e.data.tests ?? []))
       ctx.postMessage({ id, ok: true, result: JSON.parse(out) })

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import initSqlJs, { type SqlJsStatic } from 'sql.js'
 import type { DatasetName, PyTest } from '../src/data/types'
-import type { Runners } from '../src/engine/sketch'
+import { classifySqlError, type Runners, type SyntaxCheck } from '../src/engine/sketch'
 import { canonRows, pyJson } from '../src/grading/sqlCompare'
 import type { PyTestsResult } from '../src/runtimes/py'
 import type { SqlRunResult } from '../src/runtimes/sql'
@@ -68,9 +68,16 @@ export async function nodeRunPyTests(code: string, fn: string, tests: PyTest[]):
   return { ok: out.ok, error: out.error, stdout: out.stdout, results: out.results }
 }
 
+export async function nodeCheckSyntax(lang: 'sql' | 'python', dataset: DatasetName | undefined, code: string): Promise<SyntaxCheck | null> {
+  if (lang === 'python') return JSON.parse((await pyodide()).globals.get('check_syntax_json')(code)) as SyntaxCheck
+  const r = await nodeRunSql(dataset, code)
+  return r.ok ? { status: 'ok' } : classifySqlError(r.error)
+}
+
 export const nodeRunners: Runners = {
   runSql: nodeRunSql,
   runPyTests: nodeRunPyTests,
   pythonReady: () => true,
   preloadPython: () => {},
+  checkSyntax: nodeCheckSyntax,
 }

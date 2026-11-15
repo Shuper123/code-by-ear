@@ -8,6 +8,10 @@ import { sendForJson, type AiCredentials, type CallOptions } from './anthropic'
 import {
   converterSystem,
   converterUser,
+  editSystem,
+  editUser,
+  isEditReply,
+  type EditReply,
   EXPLAIN_MORE_SYSTEM,
   explainerUser,
   EXPLAINER_SYSTEM,
@@ -104,6 +108,22 @@ export class AiServices implements AiGrader {
         this.opts(signal),
       )
       return speakable(data.feedback_spoken, 50)
+    } catch {
+      return null
+    }
+  }
+
+  /** One spoken edit to the learner's code (only what was asked). Null on any failure. */
+  async editCode(d: Drill, code: string, instruction: string, signal?: AbortSignal): Promise<EditReply | null> {
+    try {
+      const c = this.config()
+      const { data } = await sendForJson(
+        c.cred,
+        { model: c.model, maxTokens: 900, system: editSystem(d.lang), user: editUser(code, instruction), cacheSystem: true },
+        isEditReply,
+        this.opts(signal),
+      )
+      return data
     } catch {
       return null
     }

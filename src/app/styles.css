@@ -478,3 +478,86 @@ input[type='range'] {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* dictation editor */
+.editor {
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  background: var(--bg, #0e1013);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px 8px 0;
+  margin-top: 8px;
+  overflow-x: auto;
+}
+.ed-line {
+  display: flex;
+  flex-wrap: wrap;
+  white-space: pre;
+}
+.ed-num {
+  display: inline-block;
+  width: 2.4em;
+  text-align: right;
+  padding-right: 0.7em;
+  color: var(--dim);
+  user-select: none;
+  flex: none;
+}
+.ed-text {
+  flex: 1;
+  min-width: 0;
+}
+.ed-cur {
+  background: rgba(120, 160, 255, 0.07);
+}
+.ed-err .ed-num {
+  color: var(--red, #e5484d);
+  font-weight: 700;
+}
+.ed-err .ed-text {
+  text-decoration: underline wavy var(--red, #e5484d);
+  text-underline-offset: 4px;
+}
+.ed-sel {
+  background: rgba(120, 160, 255, 0.35);
+  border-radius: 2px;
+}
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.15em;
+  margin: 0 -1px;
+  vertical-align: text-bottom;
+  background: var(--teal, #2ec4b6);
+  animation: caret-blink 1s steps(1) infinite;
+}
+@keyframes caret-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+.ed-ruler-row {
+  display: flex;
+  flex-basis: 100%;
+}
+.ruler {
+  color: var(--dim);
+  font-size: 0.85em;
+  letter-spacing: 0;
+  white-space: pre;
+}
+.ruler span {
+  display: inline-block;
+  width: 1ch;
+  text-align: center;
+}
+.ruler .ruler-cur {
+  color: var(--teal, #2ec4b6);
+  font-weight: 700;
+}
+.ed-error {
+  color: var(--red, #e5484d);
+  font-family: var(--mono, ui-monospace, monospace);
+}

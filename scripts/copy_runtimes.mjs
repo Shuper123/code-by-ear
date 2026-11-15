@@ -1,4 +1,4 @@
-// Copies browser runtimes (sql.js wasm, Pyodide core) from node_modules into public/runtimes
+// Copies browser runtimes (sql.js wasm, Pyodide core, ONNX Runtime Web) from node_modules into public/runtimes
 // so GitHub Pages serves them from the app's own origin and the service worker can cache them.
 import { cpSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -15,6 +15,9 @@ const copies = [
   ['pyodide/pyodide.asm.wasm', 'pyodide/pyodide.asm.wasm'],
   ['pyodide/python_stdlib.zip', 'pyodide/python_stdlib.zip'],
   ['pyodide/pyodide-lock.json', 'pyodide/pyodide-lock.json'],
+  // ONNX Runtime Web, for the on-phone Kokoro voice (versions must match @huggingface/transformers)
+  ['@huggingface/transformers/dist/ort-wasm-simd-threaded.jsep.mjs', 'ort/ort-wasm-simd-threaded.jsep.mjs'],
+  ['@huggingface/transformers/dist/ort-wasm-simd-threaded.jsep.wasm', 'ort/ort-wasm-simd-threaded.jsep.wasm'],
 ]
 let copied = 0
 for (const [from, to] of copies) {

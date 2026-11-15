@@ -130,3 +130,20 @@ export function classifierFor(allowed: readonly Command[]): (piece: string, soFa
     return cmd ? { kind: 'command', command: cmd } : null
   }
 }
+
+const LINE_NUMBER_WORDS: Record<string, number> = {
+  one: 1, won: 1, two: 2, to: 2, too: 2, three: 3, four: 4, for: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  first: 1, second: 2, third: 3, fourth: 4, fifth: 5, last: -1,
+}
+
+/** "repeat line 2", "say line two again", "read line 3": the line number, else null. "last" is -1. */
+export function parseRepeatLine(utterance: string): number | null {
+  const m = /^(?:please\s+)?(?:repeat|say|read)(?:\s+back)?(?:\s+the)?\s+(?:line\s+(\w+)|(\w+)\s+line)(?:\s+again)?(?:\s+please)?$/.exec(
+    utterance.toLowerCase().replace(/[.,!?]/g, '').replace(/\s+/g, ' ').trim(),
+  )
+  if (!m) return null
+  const w = m[1] ?? m[2]
+  if (/^\d+$/.test(w)) return Number(w)
+  return LINE_NUMBER_WORDS[w] ?? null
+}
+

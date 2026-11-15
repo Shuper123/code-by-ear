@@ -23,6 +23,13 @@ export interface Settings {
   restartDelayMs: number // pause between recognizer restarts
   pauseListening: boolean // while paused, keep listening for "continue"
   mediaButtons: boolean // M4 spike: headset and steering-wheel buttons through the Media Session API
+  codeSpeed: number // lines of code are spoken at this fraction of the normal speed
+  linePauseMs: number // silence after each line of code
+  codeTwiceDrive: boolean // in Drive, read the code twice before the question
+  voiceEngine: 'neural' | 'phone' // neural: Kokoro (pre-rendered drill audio, plus on-phone generation if downloaded)
+  neuralVoice: string // Kokoro voice ID; the pre-rendered drill audio uses af_heart
+  neuralModel: 'off' | 'best' | 'small' // on-phone generation for new text: off, fp32 (about 330 MB) or q8 (about 90 MB)
+  dictateMode: 'code' | 'keys' // the mode Dictate drills start in
   breakEveryMin: number
   cueVolume: number // 0..1
 }
@@ -44,6 +51,13 @@ export const DEFAULT_SETTINGS: Settings = {
   restartDelayMs: 120,
   pauseListening: true,
   mediaButtons: false,
+  codeSpeed: 0.85,
+  linePauseMs: 900,
+  codeTwiceDrive: true,
+  voiceEngine: 'neural',
+  neuralVoice: 'af_heart',
+  neuralModel: 'off',
+  dictateMode: 'code',
   breakEveryMin: 10,
   cueVolume: 0.35,
 }

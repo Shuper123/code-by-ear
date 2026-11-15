@@ -44,8 +44,10 @@ export function pickNewDrills(
   seen: Set<string>,
   count: number,
   eligible: (d: Drill) => boolean,
+  preferShort = false,
 ): Drill[] {
   const picked: Drill[] = []
+  const long = (d: Drill) => (preferShort && (d.code ?? '').split('\n').filter((l) => l.trim()).length > 3 ? 1 : 0)
   const seenNow = new Set(seen)
   while (picked.length < count) {
     let unit = newDrillUnit(drills, lang, seenNow)
@@ -60,8 +62,8 @@ export function pickNewDrills(
       candidates.sort((a, b) => UNITS[lang].indexOf(a.unit) - UNITS[lang].indexOf(b.unit))
     }
     if (!candidates.length) break
-    // easier drills first, otherwise keep the authored order (it mixes drill types)
-    const next = [...candidates].sort((a, b) => a.difficulty - b.difficulty)[0]
+    // easier drills first (and in Drive, code of 3 lines or fewer first), otherwise the authored order
+    const next = [...candidates].sort((a, b) => long(a) - long(b) || a.difficulty - b.difficulty)[0]
     picked.push(next)
     seenNow.add(next.id)
   }

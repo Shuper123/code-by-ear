@@ -4,7 +4,7 @@
 - Spec: "Code by Ear: Build Plan" doc, https://claude.ai/artifact/CzQVMPkJ4s1w8pv6QvThSM (sections are numbered in
   order: 3 Decisions, 5 Sessions, 6 Grading, 7 Learning engine, 8 Content, 9 Verbal Syntax, 12 Safety and privacy,
   13 Milestones, 14 Testing)
-- Last updated: 2026-11-14, milestone 4 deployed (all milestones built; waiting for the on-phone checklist)
+- Last updated: 2026-11-14, after M4: neural voice, pacing, and the voice editor (Keys mode, edits) deployed
 
 ## Milestones
 
@@ -15,6 +15,7 @@
 | M2 AI grading and Sketch | Deployed, waiting for phone test | AI grading, Sketch for SQL and Python, 24 ladders |
 | M3 Verbal Syntax and Dictate | Deployed, waiting for phone test | Parser, edit commands, read-back, Dictate in Parked; 26 ladders |
 | M4 Polish | Deployed, waiting for phone test | Progress, Drills browser, export and import, media buttons spike |
+| After M4 (Joshua's requests) | Deployed, waiting for phone test | Neural voice (Kokoro), pacing, voice editor with Keys mode and plain-English edits |
 
 ## What works
 
@@ -111,7 +112,47 @@ M4
   fake MediaSession). The browser smoke test exports a backup, wipes progress, imports it, checks the key stayed,
   checks the Drills search and filters, and presses fake media buttons in a session (36 checks, all passing).
 
+After M4 (requested by Joshua on 2026-11-14)
+- **Pacing** (`src/engine/session.ts`, `src/speech/chunks.ts`): code is read one line at a time at its own slower
+  speed (Settings, Pacing: code speed 0.85 of normal, 0.9 s pause after each line), announced with its line count
+  ("Three lines.") when the spoken pieces match the code's lines. Drive reads the code twice ("Again.") before the
+  question. "repeat line 2" (or "say the last line") replays one line. In Drive, new drills with 3 lines of code or
+  fewer come first.
+- **Neural voice** (`src/speech/voice.ts`, `neural.ts`, `kokoro.worker.ts`): Kokoro-82M (Apache-2.0), voice Heart.
+  Every fixed sentence (drill prompts, code lines, model answers, hints, the app's own phrases) is pre-rendered at
+  build time by `scripts/render_voice.py` into `public/voice/af_heart/<key>.ogg` (Opus, about 36 kbps) with
+  `src/data/voice_manifest.json` listing them; the key is a hash of style plus sentence (`speechKey`). Clips get
+  150 ms of lead-in silence, and after 4 s of quiet a short silence plays first, so a waking Bluetooth link doesn't
+  clip words. New sentences (AI feedback, your code read back, the editor's answers) are generated on the phone by
+  kokoro-js in a worker (WebGPU with the fp32 model when the GPU is available, else the q8 model on the CPU), then
+  cached. An utterance never switches voices: if any sentence of it can't be neural yet, the whole utterance uses
+  the phone voice. Settings, Voice quality: choose neural or phone, download all drill audio, turn on the on-phone
+  model (best about 330 MB, or smaller about 90 MB, downloaded once from Hugging Face), test voice and pacing.
+- **Voice editor for Dictate** (`src/verbal/editor.ts`, `keys.ts`, `edits.ts`, `src/app/EditorView.tsx`): the code
+  is text with a cursor, shown with line numbers, the cursor, any selection, and a character ruler under the
+  cursor's line. Code mode is Verbal Syntax inserted at the cursor (formatted); Keys mode types one keystroke per
+  word (letters plain, NATO or Talon's alphabet, "capital X", numbers, symbols by name, space, tab, new line,
+  backspace and delete with counts, arrow moves). Both modes: "edit at line 2 character 7", "go to line 3",
+  "after equals", "before paren", "next match", "start/end of line", "left 3", "word right", "select word/line",
+  "highlight total" ("select X" too, in Python), "delete line", "clear line", "delete word", "indent", "dedent",
+  "undo"/"scratch that", "redo", "where am I", "read line", "spell line", "read it back", "check", "run it",
+  "keys mode", "code mode". Each phrase applies as soon as the recognizer finishes it (no silence wait).
+- **Live errors**: after every change the code goes through Python's own compiler (Pyodide) or SQLite (sql.js); the
+  screen shows only the interpreter's message on its line (`SyntaxError: expected ':'`). Unfinished code (an open
+  block or bracket, or a problem right at the end where you're still typing) isn't flagged; unknown SQL names wait
+  for "check". Hints only when asked.
+- **Plain-English edits**: "change count to total", "replace 3 with 5 on line 2", "rename x to total", "add a colon
+  at the end of line 1", "insert plus one after count", "remove the colon on line 2", "swap lines 2 and 3",
+  "move line 4 up" are rules (instant, offline). Anything else starting with an edit word ("make the loop count
+  down") goes to Claude, which may make only that change (refused if it changes more than 4 lines).
+- Tests: 440 unit tests (pacing, voice layer with fakes, editor, keys grammar, edits, live checks with real Pyodide
+  and sql.js, simulated Dictate sessions in both modes, AI edits with a fake). The browser smoke test now also
+  checks a live Python error and its Keys-mode fix, a plain-English edit, a drill spoken entirely from
+  pre-recorded clips, and the on-phone voice generating a new sentence (with a local stand-in for Hugging Face).
+
 ## What to test on the phone
+
+See the phone test plan doc (linked in the build chat) for the full order. In short:
 
 1. M0 list: install from Chrome, run the voice loop and the long-answer test in Voice check, at home and in the car.
 2. Settings, Languages: SQL only. Start Drive at home or parked first; let it run about 20 minutes without touching
@@ -162,8 +203,29 @@ M4
 - Spec gap: Dictate opens after Sketch passes, but without a key Sketch is a self-rated Plan. A self-rated 2 or
   more on that Plan counts as a pass so Dictate doesn't stay locked forever without a key.
 - The headless test browser has no real voices or microphone; speech was tested with fakes only.
+- The on-phone Kokoro model can't be fetched from this build machine (Hugging Face is blocked here), so it was
+  tested against a local stand-in built from the kokoro-onnx release (`scripts/make_fake_hf.py`): the plumbing is
+  verified, the real model's speed and sound on the Fold 7 are not. WebGPU was not testable headless.
+- Pronunciation of code words by Kokoro (for example "qty", "len", "def") hasn't been heard by a person yet. Odd
+  ones can be fixed by rewording that drill's spoken text and re-rendering.
+- Keys mode letters depend on how Android's recognizer writes single letters; plain letter names are the least
+  reliable (Talon's or NATO words are safer). Grammar biasing isn't possible in Chrome on Android.
 
 ## Decisions and deviations from the spec
+
+- **Locked decision changed, with Joshua's OK (2026-11-14):** the Speech row was "Chrome's built-in speech
+  recognition and the phone's text-to-speech voices". Joshua chose the on-device neural voice ("voice option 3")
+  for quality and consistency, accepting larger downloads. Now: Chrome's recognition (unchanged) plus the Kokoro
+  neural voice (pre-rendered drill audio plus on-phone generation), with the phone's voice as the fallback and a
+  Settings switch back to it. Still free and keyless. Recognition is unchanged; an on-device grammar recognizer
+  (Vosk) for Keys mode would need his OK.
+- **Pacing:** code speed and pauses are separate settings from speech rate; reading code twice is Drive only
+  (Parked shows the code). A number right after a move or backspace in Keys mode is its count ("backspace three");
+  say "number three" to type a digit there.
+- **Keys mode spacing:** nothing is added that you didn't say (no automatic spaces); words that aren't keystroke
+  names are typed as said. New line keeps the indent and adds one after a colon.
+- **SQL:** "select ..." and a bare "end" stay code in SQL; "highlight X" selects there.
+- **"check it"** now only checks syntax (it used to run the code); "run it", "done", "I'm done" run it.
 
 - **No temperature in AI calls.** The spec's headers (`Authorization: Bearer`, `anthropic-version: 2026-10-21`) match
   the current Claude API docs, but API version 2026-10-21 removed `temperature`, `top_p` and `top_k`; sending any of
@@ -220,9 +282,18 @@ M4
   sessions. AI grading, Sketch and Dictate plug in through `typeHooks` (see `makeSketchHook`, `makeDictateHook`)
   wired up in `src/app/SessionScreen.tsx`.
 - Never commit an API key. Never ask the user to paste a key into chat.
+- Neural voice: after changing any spoken text (drills or the app's fixed sentences), run `npm run voice`
+  (`vite-node scripts/voice_texts.ts`, then `scripts/render_voice.py --prune`): it renders only new sentences.
+  Needs `pip install kokoro-onnx soundfile` and the model files from the kokoro-onnx GitHub release
+  (model-files-v1.0: kokoro-v1.0.onnx, voices-v1.0.bin; plus kokoro-v1.0.int8.onnx for the test stand-in) in
+  `$KOKORO_MODEL_DIR` or `../tools/kokoro-model`. Commit the new `public/voice/` files and the manifest.
+- On-phone voice test stand-in: `python3 scripts/make_fake_hf.py` (needs `pip install onnx`), then `npm run smoke`.
 
 ## Next steps
 
+- Joshua's phone test of the neural voice, pacing and the voice editor (test plan doc), then: aliases for misheard
+  words, pacing defaults, which alphabet to teach, and whether Keys mode needs an on-device grammar recognizer
+  (Vosk would change the locked Speech decision, so only with Joshua's OK).
 - Run the on-phone checklist (spec section 14) and paste the Voice check report, including the button test, into
   the build chat.
 - From those results: add aliases for words the recognizer mishears (consider fuzzy matching for keywords), tune

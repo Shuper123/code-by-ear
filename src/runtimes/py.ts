@@ -57,8 +57,12 @@ function getWorker(): Worker {
 }
 
 function kill() {
+  // nothing may wait forever on a worker that's gone
+  for (const cb of pending.values()) cb({ ok: false, error: 'Python was restarted.' })
+  pending.clear()
   worker?.terminate()
   worker = null
+  warm = false
   ready = false
   loadPromise = null
   notify()
@@ -94,15 +98,23 @@ export function loadPython(): Promise<void> {
   return loadPromise
 }
 
+// The first run after Python loads compiles a lot of code paths and can be slow on a busy phone, so it
+// gets a longer limit; after that the normal limit applies (it exists to stop runaway loops).
+let warm = false
+
 async function timed(msg: Record<string, unknown>, timeoutMs: number) {
   await loadPython()
+  const limit = warm ? timeoutMs : Math.max(timeoutMs, 12000)
   return Promise.race([
-    send(msg),
+    send(msg).then((r) => {
+      if (r.ok) warm = true
+      return r
+    }),
     new Promise<{ ok: false; error: string; timeout: true }>((res) =>
       setTimeout(() => {
         kill() // stop the runaway code; the next run reloads Python
-        res({ ok: false, error: `The code ran longer than ${timeoutMs / 1000} seconds and was stopped.`, timeout: true })
-      }, timeoutMs),
+        res({ ok: false, error: `The code ran longer than ${limit / 1000} seconds and was stopped.`, timeout: true })
+      }, limit),
     ),
   ])
 }
@@ -137,3 +149,22 @@ export async function warmPythonCache(): Promise<boolean> {
     return false
   }
 }
+
+export interface SyntaxCheck {
+  status: 'ok' | 'incomplete' | 'error'
+  message?: string
+  line?: number
+  col?: number
+}
+
+/** Python's own verdict on code so far; null if Python isn't loaded yet (it never waits for the download). */
+export async function checkPythonSyntax(code: string): Promise<SyntaxCheck | null> {
+  if (!ready) return null
+  try {
+    const r = (await timed({ kind: 'check', code }, 3000)) as { ok: boolean; result?: SyntaxCheck }
+    return r.ok && r.result ? r.result : null
+  } catch {
+    return null
+  }
+}
+

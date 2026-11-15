@@ -13,10 +13,13 @@
     "check": "npm run validate && npm test",
     "deploy": "bash scripts/deploy_pages.sh",
     "smoke": "python3 scripts/browser_smoke.py",
+    "voice": "vite-node scripts/voice_texts.ts && python3 scripts/render_voice.py --prune",
+    "fakehf": "python3 scripts/make_fake_hf.py",
     "datasets": "python3 scripts/generate_datasets.py"
   },
   "dependencies": {
     "idb": "8.0.4",
+    "kokoro-js": "1.2.1",
     "preact": "10.29.8",
     "pyodide": "0.28.3",
     "sql.js": "1.13.0"

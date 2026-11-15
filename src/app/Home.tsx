@@ -7,6 +7,8 @@ import { languagesFor } from '../engine/queue'
 import { newDrillUnit } from '../engine/unlock'
 import { isStandalone, pwa } from '../pwa'
 import { warmPythonCache } from '../runtimes/py'
+import { ensureNeural } from '../speech/neural'
+import { getSettings } from '../settings'
 import { useSettings } from '../settings'
 import { unlockAudio } from '../speech/cues'
 import { ttsSupported } from '../speech/tts'
@@ -72,6 +74,11 @@ export function Home() {
     const t = setTimeout(() => void warmPythonCache(), 5000)
     return () => clearTimeout(t)
   }, [hasKey, settings.languageMix])
+  useEffect(() => {
+    // the on-phone neural voice, if chosen: start loading it in the background (it keeps going if you
+    // leave this screen) so sessions can use it
+    setTimeout(() => ensureNeural(getSettings()), 1500)
+  }, [settings.voiceEngine, settings.neuralModel])
 
   const mix = settings.languageMix === 'both' ? 'SQL and Python' : settings.languageMix === 'sql' ? 'SQL only' : 'Python only'
   return (

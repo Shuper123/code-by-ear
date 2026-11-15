@@ -24,6 +24,26 @@ export interface Runners {
   runPyTests(code: string, fn: string, tests: PyTest[]): Promise<PyTestsResult>
   pythonReady(): boolean
   preloadPython(): void
+  /** Resolves once Python is loaded (starting the load if needed). */
+  loadPython?(): Promise<void>
+  /** Live syntax check while dictating; null when it can't check yet (Python still loading). */
+  checkSyntax?(lang: 'sql' | 'python', dataset: DatasetName | undefined, code: string): Promise<SyntaxCheck | null>
+}
+
+export interface SyntaxCheck {
+  status: 'ok' | 'incomplete' | 'error'
+  message?: string
+  line?: number
+  col?: number
+  /** A problem that isn't syntax (no such column), shown on "check" and "run it" rather than live. */
+  later?: string
+}
+
+/** SQLite's error, sorted: unfinished input isn't an error yet; unknown names wait for "check". */
+export function classifySqlError(error: string): SyntaxCheck {
+  if (/incomplete input/i.test(error)) return { status: 'incomplete' }
+  if (/syntax error|unrecognized token|unterminated/i.test(error)) return { status: 'error', message: error }
+  return { status: 'ok', later: error }
 }
 
 type SchemaEntry = { table: string; columns: string[]; spoken: string }

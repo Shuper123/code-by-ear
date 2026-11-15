@@ -15,6 +15,9 @@ import {
   RATING_COMMANDS,
   type Command,
 } from '../speech/commands'
+import { codePieces, lineCountPhrase, type SpeechStyle } from '../speech/chunks'
+import type { EditorSnapshot } from '../verbal/editor'
+import { parseRepeatLine } from '../speech/commands'
 import type { CueName } from '../speech/cues'
 import { describeSttError, type ListenHandle, type ListenOptions, type ListenResult, type SttErrorKind } from '../speech/stt'
 import type { Attempt, DrillState, Profile, SessionRecord } from '../storage/db'
@@ -31,8 +34,27 @@ export interface AiGrader {
   explainMore(d: Drill, signal: AbortSignal): Promise<string | null>
 }
 
+/** endOnPiece: return as soon as the recognizer finishes a phrase (the dictation editor applies each one live). */
+export interface HearOptions {
+  silenceMs?: number
+  thinkMs?: number
+  endOnPiece?: boolean
+}
+
+/** What the Parked screen shows under the prompt: code, a note, or the live dictation editor. */
+export interface ViewDetail {
+  code?: string
+  note?: string
+  editor?: EditorSnapshot
+}
+
 export interface EngineDeps {
-  speak(text: string, rate: number, signal: AbortSignal): Promise<void>
+  /** Speak and resolve when done. `style` 'code' is a line of code (spoken slower, by the caller's rate). */
+  speak(text: string, rate: number, signal: AbortSignal, style?: SpeechStyle): Promise<void>
+  /** Wait between lines of code; resolves early on abort. Tests leave it out (no waiting). */
+  sleep?(ms: number, signal: AbortSignal): Promise<void>
+  /** Called once with the planned drills, so their audio can be fetched ahead. */
+  onQueue?(drills: Drill[]): void
   stopSpeaking(): void
   listen(opts: ListenOptions): ListenHandle
   cue(name: CueName): Promise<void>
@@ -97,7 +119,7 @@ export interface EngineView {
   recap: string
   error: string
   /** Extra things to show on the Parked screen (the converted code, the run result). */
-  detail: { code?: string; note?: string }
+  detail: ViewDetail
 }
 
 export class Interrupt extends Error {
@@ -111,14 +133,14 @@ export interface DrillContext {
   drill: Drill
   hints: number
   say(text: string): Promise<void>
-  hear(allowed: readonly Command[], opts?: { silenceMs?: number; thinkMs?: number }): Promise<ListenResult & { command?: string }>
+  hear(allowed: readonly Command[], opts?: HearOptions): Promise<ListenResult & { command?: string }>
   cue(name: CueName): Promise<void>
   record(score: Score, gradedBy: Attempt['gradedBy'], transcript: string): Promise<void>
   selfRate(transcript: string, preface: string): Promise<void>
   noteFor(ladder: string): Promise<string | undefined>
   saveNote(field: 'plan' | 'sketch' | 'dictate', text: string): Promise<void>
   followUp(transcript: string): Promise<void>
-  show(detail: { code?: string; note?: string }): void
+  show(detail: ViewDetail): void
   /** Count the drill as done without a score. */
   skip(): void
   /** Pause the session (spoken message), then carry on from here when resumed. */
@@ -292,29 +314,47 @@ export class SessionEngine {
     this.check()
   }
 
+  /** Lines of code: slower, one at a time, with a pause after each so they can sink in. */
+  private async sayCode(pieces: string[]) {
+    const s = this.cfg.settings
+    for (const [i, piece] of pieces.entries()) {
+      this.check()
+      this.update({ phase: 'speaking', said: piece })
+      await this.deps.speak(piece, this.rate * s.codeSpeed, this.ctrl.signal, 'code')
+      this.check()
+      await this.wait(i < pieces.length - 1 ? s.linePauseMs : Math.round(s.linePauseMs * 0.6))
+    }
+  }
+
+  private async wait(ms: number) {
+    if (ms > 0 && this.deps.sleep) await this.deps.sleep(ms, this.ctrl.signal)
+    this.check()
+  }
+
   private async cue(name: CueName) {
     this.check()
     await this.deps.cue(name)
   }
 
-  private listenOpts(allowed: readonly Command[], o: { silenceMs?: number; thinkMs?: number } = {}): ListenOptions {
+  private listenOpts(allowed: readonly Command[], o: HearOptions = {}): ListenOptions {
     const s = this.cfg.settings
+    const base = classifierFor(allowed)
+    const classify = o.endOnPiece
+      ? (piece: string, soFar: string) => base(piece, soFar) ?? (piece.trim() ? { kind: 'end' as const, keep: piece } : null)
+      : base
     return {
       silenceMs: o.silenceMs ?? (this.cfg.profile === 'drive' ? s.silenceDriveMs : s.silenceParkedMs),
       initialWaitMs: o.thinkMs ?? s.thinkMs,
       maxMs: 120000,
       continuous: s.sttContinuous,
       restartDelayMs: s.restartDelayMs,
-      classify: classifierFor(allowed),
+      classify,
       onUpdate: (p) => this.update({ heard: p.text }),
     }
   }
 
   /** Beep, then listen. Pause and stop commands interrupt right here. */
-  private async hear(
-    allowed: readonly Command[],
-    o: { silenceMs?: number; thinkMs?: number } = {},
-  ): Promise<ListenResult & { command?: string }> {
+  private async hear(allowed: readonly Command[], o: HearOptions = {}): Promise<ListenResult & { command?: string }> {
     this.check()
     await this.deps.cue('listening')
     this.check()
@@ -456,6 +496,7 @@ export class SessionEngine {
       supportedTypes: this.deps.supportedTypes,
       only: this.cfg.only,
     })
+    this.deps.onQueue?.(this.queue.peekAll().map((i) => i.drill))
     this.startedAt = this.deps.now()
     this.lastTick = this.startedAt
     try {
@@ -602,6 +643,12 @@ export class SessionEngine {
           await this.say(missed === 1 ? "I didn't hear an answer. Here it is again." : 'Here it is again.')
           continue
         }
+        const lineNo = !hook && d.code_spoken ? parseRepeatLine(r.text) : null
+        if (lineNo !== null) {
+          await this.repeatLine(d, lineNo)
+          skipPrompt = true
+          continue
+        }
         this.consecutiveUnanswered = 0
         this.update({ lastAnswer: r.text })
         await this.cue('gotIt')
@@ -643,16 +690,33 @@ export class SessionEngine {
   }
 
   private async speakPrompt(d: Drill, override?: string) {
-    const parts: string[] = []
-    if (this.lastLang !== d.lang) parts.push(d.lang === 'sql' ? 'SQL.' : 'Python.')
+    const intro: string[] = []
+    if (this.lastLang !== d.lang) intro.push(d.lang === 'sql' ? 'SQL.' : 'Python.')
     this.lastLang = d.lang
-    if (override) parts.push(override)
-    else {
-      if (d.type === 'spot_bug') parts.push('Spot the bug.')
-      if (d.code_spoken) parts.push(d.code_spoken)
-      parts.push(d.prompt_spoken)
+    const pieces = override ? [] : codePieces(d.code_spoken)
+    if (!pieces.length) {
+      intro.push(override ?? d.prompt_spoken)
+      await this.say(intro.join(' '))
+      return
     }
-    await this.say(parts.join(' '))
+    if (d.type === 'spot_bug') intro.push('Spot the bug.')
+    const count = lineCountPhrase(d.code, pieces)
+    if (count) intro.push(count)
+    if (intro.length) await this.say(intro.join(' '))
+    await this.sayCode(pieces)
+    if (this.cfg.profile === 'drive' && this.cfg.settings.codeTwiceDrive) {
+      await this.say('Again.')
+      await this.sayCode(pieces)
+    }
+    await this.say(d.prompt_spoken)
+  }
+
+  /** "repeat line 2": just that line of the drill's code. */
+  private async repeatLine(d: Drill, n: number) {
+    const pieces = codePieces(d.code_spoken)
+    const i = n === -1 ? pieces.length : n
+    if (i < 1 || i > pieces.length) await this.say(pieces.length === 1 ? 'There is only one line.' : `There are ${pieces.length} lines.`)
+    else await this.sayCode([pieces[i - 1]])
   }
 
   // ---------- grading ----------

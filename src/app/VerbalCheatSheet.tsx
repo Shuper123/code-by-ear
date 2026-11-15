@@ -41,12 +41,32 @@ const SQL: Row[] = [
 ]
 const PY_SHORT: Row[] = [['len of nums (also sum, sorted, max, min, int, str)', 'len(nums)']]
 const EDITS: Row[] = [
-  ['scratch that', 'undo your last utterance', true],
-  ['delete line', 'remove the current line', true],
-  ['go to line 3', 'move the cursor', true],
-  ['read it back / read line', 'hear the code', true],
-  ['run it (or done)', 'check it and run the tests', true],
+  ['edit at line 2 character 7', 'put the cursor there (the ruler under the line counts characters)', true],
+  ['go to line 3', 'end of line 3, and hear it', true],
+  ['after equals / before paren / after total', 'jump to the next one; "next match" for the one after', true],
+  ['start of line / end of line / top / bottom', 'move there', true],
+  ['left 3 / right 2 / up / down / word left', 'move by characters, lines or words', true],
+  ['select word / select line / highlight total', 'what you say next replaces it', true],
+  ['delete line / clear line / delete word', 'remove it', true],
+  ['backspace three / delete two', 'remove characters before or after the cursor', true],
+  ['indent / dedent', 'shift the line 4 spaces', true],
+  ['undo (or scratch that) / redo', 'step back or forward one change', true],
+  ['where am I / read line / spell line', 'hear the cursor, a line, or a line letter by letter', true],
+  ['read it back', 'hear all the code', true],
+  ['check', 'hear Python or SQLite say whether it parses', true],
+  ['run it (or done)', 'run the tests or compare rows', true],
+  ['keys mode / code mode', 'switch how words are typed', true],
   ['start over', 'clear everything', true],
+]
+
+const KEYS: Row[] = [
+  ['v a r, or victor alpha romeo, or vest air red', 'var'],
+  ['capital x / caps on ... caps off', 'X'],
+  ['three / twenty five / number three (after a move)', '3 25 3'],
+  ['equals / plus / colon / open paren ... (names below)', '= + : ('],
+  ['space / tab / new line', 'nothing is added you didn’t say', true],
+  ['backspace backspace / backspace three', 'remove characters', true],
+  ['any other word', 'is typed as said: print', true],
 ]
 
 function Table({ title, rows }: { title: string; rows: Row[] }) {
@@ -74,10 +94,13 @@ export function VerbalCheatSheet({ lang }: { lang: VLang }) {
     <details class="card cheat-sheet">
       <summary>Verbal Syntax cheat sheet</summary>
       <p class="small">
-        Say symbols by name. Names from the task join by themselves, so "part id" writes part_id. New multi-word names
-        need "snake".
+        Say symbols by name. In Code mode, names from the task join by themselves, so "part id" writes part_id; new
+        multi-word names need "snake". Python and SQLite errors show under the code as you go; say "hint" when you
+        want one.
       </p>
-      <Table title="Edit commands" rows={EDITS} />
+      <Table title="Moving and editing (both modes)" rows={EDITS} />
+      <Table title="Keys mode: every word is a keystroke" rows={KEYS} />
+      <p class="small" style={{ marginTop: '12px' }}>Code mode: you say code in words and it's formatted for you.</p>
       <Table title="Structure" rows={lang === 'sql' ? STRUCTURE.filter(([s]) => !/brace|f quote|comment|back/.test(s)) : STRUCTURE} />
       <Table title="Operators" rows={lang === 'sql' ? OPERATORS.filter(([s]) => !/floor|plus equals/.test(s)) : OPERATORS} />
       {lang === 'sql' ? <Table title="SQL" rows={SQL} /> : <Table title="Names and values" rows={[...NAMES, ...PY_SHORT]} />}

@@ -15,7 +15,10 @@ import {
 import { chooseVoice, speak, stopSpeaking, ttsSupported, waitForVoices } from '../speech/tts'
 import { holdWakeLock, onWakeLockChange, releaseWakeLock, wakeLockState, wakeLockSupported } from '../platform/wakelock'
 import { buildLabel } from '../version'
+import { neural } from '../speech/neural'
+import { voice } from '../speech/voice'
 import { ButtonTest, buttonReportLines } from './ButtonTest'
+import { neuralStatusText } from './VoiceSettings'
 import { goBack } from './nav'
 
 const SAMPLE = {
@@ -254,6 +257,9 @@ export function Spike() {
       `Voice loop: ${loopResult || 'not run'}`,
       `Long answer: ${longStats ? JSON.stringify(longStats) : 'not run'}`,
       `AI call: ${ai || 'not run'} · key saved: ${hasKey}`,
+      `Voice: ${s.voiceEngine} (${s.neuralVoice}), on-phone model ${s.neuralModel}: ${neuralStatusText(neural.status)}`,
+      `Voice: last utterance used ${voice.lastEngine ?? 'nothing yet'}; last voice error: ${voice.lastError ?? 'none'}`,
+      `Pacing: code speed ${s.codeSpeed}, line pause ${s.linePauseMs} ms, code twice in Drive ${s.codeTwiceDrive}`,
       `Buttons setting: ${s.mediaButtons}`,
       ...buttonReportLines(),
       '--- event log (ms since screen opened) ---',

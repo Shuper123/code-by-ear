@@ -253,8 +253,9 @@ https://claude.ai/artifact/DsFEAS5iWzduvBqN3wT7E5.
    "compare", "undo", "hint" and "show me" along the way.
 3. Do five tasks. For each, note any clause the app heard wrong: the YOU box shows what the recognizer wrote, and
    the echo says where it put it. Those words become entries in the heard-as list.
-4. Pause on purpose in the middle of a long clause (the case task is the fourth or fifth). The app should say "Go
-   on." and take the rest, not report an error. Note if it cuts in while you are still talking.
+4. Pause on purpose in the middle of a clause (say "where quantity greater than", then wait). The app should say
+   "Go on." and take the rest, not report an error. Note if it cuts in while you are still talking. The first
+   session holds the first five tasks: filter, null check, date range, group and count, top-n.
 5. Note the wait between the end of your clause and the start of the echo, and whether the echo voice is the same
    as the prompt voice. Settings, Build and typed can turn the echo off.
 6. Home, Typed set: type the tasks you just built. Check Progress, Build and typed afterwards.
